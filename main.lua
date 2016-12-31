@@ -131,9 +131,9 @@ function move_character(x,y)
 	if x>=1 and x<=map_w and y>=1 and y<=map_h then
 		if moveable[y][x]<=0 then
 			print("moveable point")
+			save_state()
 			player.x=x
 			player.y=y
-			mapstate_clear(moveable,1)
 			state=2
 		else
 			print("not moveable point")
@@ -148,7 +148,7 @@ function action_buttons_click(pos_x,pos_y)
 			if i==1 then
 				save_state()
 				state=3
-				atkable_tiles(player.x,player.y,player.atk_range)
+				mapstate_set()
 			elseif i==2 then
 				save_state()
 				state=4
@@ -157,6 +157,14 @@ function action_buttons_click(pos_x,pos_y)
 				state=0
 			end
 		end
+	end
+end
+
+function mapstate_set()
+	if state==1 then
+		moveable_tiles(player.speed,player.x,player.y)
+	elseif state==3 then
+		atkable_tiles(player.x,player.y,player.atk_range)
 	end
 end
 
@@ -170,6 +178,11 @@ function mapstate_clear(mapstate,num)
 end
 
 function save_state()
+	if state==1 then
+		mapstate_clear(moveable,1)
+	elseif state==3 then
+		mapstate_clear(atkable,0)
+	end
 	table.insert(state_stack.states,state)
 	table.insert(state_stack.x,player.x)
 	table.insert(state_stack.y,player.y)
@@ -180,6 +193,11 @@ function load_state()
 	if state_stack.top==0 then
 		return
 	end
+	if state==1 then
+		mapstate_clear(moveable,1)
+	elseif state==3 then
+		mapstate_clear(atkable,0)
+	end
 	state=state_stack.states[state_stack.top]
 	table.remove(state_stack.states)
 	player.x=state_stack.x[state_stack.top]
@@ -187,6 +205,7 @@ function load_state()
 	player.y=state_stack.y[state_stack.top]
 	table.remove(state_stack.y)
 	state_stack.top=state_stack.top-1
+	mapstate_set()
 end
 
 function love.mousepressed(pos_x, pos_y, button, istouch)
@@ -194,9 +213,9 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 	if button == 1 then
 		if state==0 then
 			if player.x==x and player.y==y then
-				moveable_tiles(player.speed,player.x,player.y)
 				save_state()
 				state=1
+				mapstate_set()
 			end
 		elseif state==1 then
 			move_character(x,y)
@@ -210,12 +229,10 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 			--maybe add option menu later
 			--or display character infos like jojojeon
 		elseif state==1 then
-			mapstate_clear(moveable,1)
 			load_state()
 		elseif state==2 then
 			load_state()
 		elseif state==3 then
-			mapstate_clear(atkable,0)
 			load_state()
 		end
 	end
