@@ -15,6 +15,12 @@ function love.load(arg)
 
 	state=0--0:default 1:pressed a character 2:moved and preparing an action
 
+	state_stack={}
+	state_stack.top=0
+	state_stack.states={}
+	state_stack.x={}
+	state_stack.y={}
+
 	player={}
 
 	player.speed=6
@@ -49,10 +55,10 @@ function love.load(arg)
 	   { 0, 2, 0, 0, 0, 3, 0, 3, 0, 1, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0},
 	   { 0, 2, 2, 2, 0, 3, 3, 3, 0, 1, 1, 1, 0, 2, 2, 2, 0, 0, 0, 0},
 	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 3, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	}
 	tile = {}
 	for i=0,3 do
@@ -140,11 +146,14 @@ function action_buttons_click(pos_x,pos_y)
 		if between(pos_x,action_buttons[i].x,action_buttons[i].x+action_buttons[i].width) and between(pos_y,action_buttons[i].y,action_buttons[i].y+action_buttons[i].height) then
 			mapstate_clear(moveable,1)
 			if i==1 then
+				save_state()
 				state=3
 				atkable_tiles(player.x,player.y,player.atk_range)
 			elseif i==2 then
+				save_state()
 				state=4
 			elseif i==3 then
+				--hangdong jongryo
 				state=0
 			end
 		end
@@ -160,12 +169,33 @@ function mapstate_clear(mapstate,num)
 	end
 end
 
+function save_state()
+	table.insert(state_stack.states,state)
+	table.insert(state_stack.x,player.x)
+	table.insert(state_stack.y,player.y)
+	state_stack.top=state_stack.top+1
+end
+
+function load_state()
+	if state_stack.top==0 then
+		return
+	end
+	state=state_stack.states[state_stack.top]
+	table.remove(state_stack.states)
+	player.x=state_stack.x[state_stack.top]
+	table.remove(state_stack.x)
+	player.y=state_stack.y[state_stack.top]
+	table.remove(state_stack.y)
+	state_stack.top=state_stack.top-1
+end
+
 function love.mousepressed(pos_x, pos_y, button, istouch)
 	x,y=mouse_to_map_point(pos_x,pos_y)
 	if button == 1 then
 		if state==0 then
 			if player.x==x and player.y==y then
 				moveable_tiles(player.speed,player.x,player.y)
+				save_state()
 				state=1
 			end
 		elseif state==1 then
@@ -178,12 +208,15 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 		if state==0 then
 			--do nothing
 			--maybe add option menu later
+			--or display character infos like jojojeon
 		elseif state==1 then
 			mapstate_clear(moveable,1)
-			state=0
+			load_state()
+		elseif state==2 then
+			load_state()
 		elseif state==3 then
 			mapstate_clear(atkable,0)
-			state=2
+			load_state()
 		end
 	end
 end
