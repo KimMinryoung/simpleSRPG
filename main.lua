@@ -3,10 +3,10 @@ function love.load(arg)
 	map_h=20
 	map_x=0
 	map_y=0
-	map_offset_x=30
-	map_offset_y=30
-	map_display_w=14
-	map_display_h=12
+	map_offset_x=10
+	map_offset_y=10
+	map_display_w=20
+	map_display_h=13
 	tile_w=35
 	tile_h=33
 
@@ -21,12 +21,19 @@ function love.load(arg)
 	state_stack.x={}
 	state_stack.y={}
 
-	player={}
-
-	player.speed=6
-	player.x=10
-	player.y=10
-	player.atk_range={
+	atk_ranges={}
+	atk_ranges[1]={
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,1,0,0,0,0},
+		{0,0,0,1,0,1,0,0,0},
+		{0,0,0,0,1,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0}
+	}
+	atk_ranges[2]={
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
@@ -37,6 +44,83 @@ function love.load(arg)
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0}
 	}
+	atk_ranges[3]={
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,1,0,0,0,0},
+		{0,0,0,1,0,1,0,0,0},
+		{0,0,1,0,0,0,1,0,0},
+		{0,0,0,1,0,1,0,0,0},
+		{0,0,0,0,1,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0}
+	}
+	atk_ranges[4]={
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,1,0,0,0,0},
+		{0,0,0,1,1,1,0,0,0},
+		{0,0,1,1,0,1,1,0,0},
+		{0,1,1,0,0,0,1,1,0},
+		{0,0,1,1,0,1,1,0,0},
+		{0,0,0,1,1,1,0,0,0},
+		{0,0,0,0,1,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0}
+	}
+	atk_ranges[5]={
+		{0,0,0,0,1,0,0,0,0},
+		{0,0,0,1,0,1,0,0,0},
+		{0,0,1,0,0,0,1,0,0},
+		{0,1,0,0,0,0,0,1,0},
+		{1,0,0,0,0,0,0,0,1},
+		{0,1,0,0,0,0,0,1,0},
+		{0,0,1,0,0,0,1,0,0},
+		{0,0,0,1,0,1,0,0,0},
+		{0,0,0,0,1,0,0,0,0}
+	}
+
+	player={}
+
+	player.speed=6
+	player.x=1
+	player.y=1
+	player.atk_range=atk_ranges[4]
+	Unit = {}  
+	Unit.new = function(name, HP,speed,x,y,atk_range)  
+		local instance = {}  
+		local defaultHP = 100
+		instance.name = name or "anonymous"
+		instance.maxHP = HP or defaultHP
+		instance.nowHP = HP or defaultHP
+		instance.speed=speed or 0
+		instance.x=x or 0
+		instance.y=y or 0
+		instance.atk_range=atk_range or {
+			{0,0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0,0},
+			{0,0,0,0,0,0,0,0,0}
+		}
+   
+		instance.setHP = function(self, hp)
+			self.nowHP = math.min(hp,self.maxHP)  
+		end
+
+		instance.printInfo = function(self)  
+			print("name : " .. self.name , "HP : " .. self.nowHP.."/"..self.maxHP)  
+		end  
+   
+		return instance  
+	end
+   
+	unit1 = Unit.new("Jol1", 80,5,1,1,atk_ranges[3])
+	unit2 = Unit.new("Jol2", 80,5,5,5,atk_ranges[1])
+	unit1:setHP(70)
+	unit1:printInfo()
 
 	map={
 	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
@@ -64,6 +148,7 @@ function love.load(arg)
 	for i=0,3 do
 		tile[i]=love.graphics.newImage("tile"..i..".png")
 	end
+	cost={1,2,4,9}
 	love.graphics.setNewFont(12)
 	player.img=love.graphics.newImage("player.png")
 	moveable_layer=love.graphics.newImage("moveable_layer.png")
@@ -135,6 +220,7 @@ function move_character(x,y)
 			player.x=x
 			player.y=y
 			state=2
+			mapstate_set()
 		else
 			print("not moveable point")
 		end
@@ -144,16 +230,14 @@ end
 function action_buttons_click(pos_x,pos_y)
 	for i=1,3 do
 		if between(pos_x,action_buttons[i].x,action_buttons[i].x+action_buttons[i].width) and between(pos_y,action_buttons[i].y,action_buttons[i].y+action_buttons[i].height) then
-			mapstate_clear(moveable,1)
+			save_state()
 			if i==1 then
-				save_state()
 				state=3
 				mapstate_set()
 			elseif i==2 then
-				save_state()
 				state=4
 			elseif i==3 then
-				--hangdong jongryo
+				state_stack_clear()
 				state=0
 			end
 		end
@@ -163,7 +247,8 @@ end
 function mapstate_set()
 	if state==1 then
 		moveable_tiles(player.speed,player.x,player.y)
-	elseif state==3 then
+		atkable_tiles(player.x,player.y,player.atk_range)
+	elseif state==2 or state==3 then
 		atkable_tiles(player.x,player.y,player.atk_range)
 	end
 end
@@ -180,7 +265,8 @@ end
 function save_state()
 	if state==1 then
 		mapstate_clear(moveable,1)
-	elseif state==3 then
+		mapstate_clear(atkable,0)
+	elseif state==2 or state==3 then
 		mapstate_clear(atkable,0)
 	end
 	table.insert(state_stack.states,state)
@@ -195,7 +281,8 @@ function load_state()
 	end
 	if state==1 then
 		mapstate_clear(moveable,1)
-	elseif state==3 then
+		mapstate_clear(atkable,0)
+	elseif state==2 or state==3 then
 		mapstate_clear(atkable,0)
 	end
 	state=state_stack.states[state_stack.top]
@@ -206,6 +293,13 @@ function load_state()
 	table.remove(state_stack.y)
 	state_stack.top=state_stack.top-1
 	mapstate_set()
+end
+
+function state_stack_clear()
+	state_stack.top=0
+	state_stack.states={}
+	state_stack.x={}
+	state_stack.y={}
 end
 
 function love.mousepressed(pos_x, pos_y, button, istouch)
@@ -265,16 +359,16 @@ function moveable_tiles(remainStep,x,y)
 	end
 	moveable[y][x]=-remainStep
 	if x-1>=1 then
-		moveable_tiles(remainStep-(map[y][x-1]+1),x-1,y)
+		moveable_tiles(remainStep-(cost[map[y][x-1]+1]),x-1,y)
 	end
 	if x+1<=map_w then
-		moveable_tiles(remainStep-(map[y][x+1]+1),x+1,y)
+		moveable_tiles(remainStep-(cost[map[y][x+1]+1]),x+1,y)
 	end
 	if y-1>=1 then
-		moveable_tiles(remainStep-(map[y-1][x]+1),x,y-1)
+		moveable_tiles(remainStep-(cost[map[y-1][x]+1]),x,y-1)
 	end
 	if y+1<=map_h then
-		moveable_tiles(remainStep-(map[y+1][x]+1),x,y+1)
+		moveable_tiles(remainStep-(cost[map[y+1][x]+1]),x,y+1)
 	end
 end
 
