@@ -128,6 +128,9 @@ function love.load(arg)
 			end
 			if self.nowHP==0 then
 				if real then
+					if self==player then
+						love.graphics.print("Game Over...",400,400)
+					end	
 					units[instance.num]=nil
 				end
 				return true--died
@@ -143,12 +146,12 @@ function love.load(arg)
 			if self.defensing==0 then
 				damage=math.floor(other_unit.atk-self.dfs)
 			elseif self.defensing==1 then
-				damage=math.floor(other_unit.atk-self.dfs*0.75)
+				damage=math.floor((other_unit.atk-self.dfs)*0.75)
 			elseif self.defensing==2 then
-				damage=math.floor(other_unit.atk-self.dfs*0.5)
+				damage=math.floor((other_unit.atk-self.dfs)*0.5)
 			end
 			damage=math.max(1,damage)
-			died=self:setHP(self.nowHP-math.max(1,other_unit.atk-self.dfs),real)
+			died=self:setHP(self.nowHP-damage,real)
 			return damage,died
 		end
    
@@ -158,7 +161,7 @@ function love.load(arg)
 
 	unit1 = Unit.new(2,"Jol1",80,5,7,10,70,10,atk_ranges[3],"jol")
 	unit2 = Unit.new(2,"Jol2",50,5,2,5,40,15,atk_ranges[1],"jol")
-	unit3 = Unit.new(2,"Jol3",50,5,2,18,40,20,atk_ranges[1],"jol")
+	unit3 = Unit.new(2,"Jol3",50,5,2,18,40,20,atk_ranges[4],"jol")
 
 	map={
 	   { 0, 0, 3, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}, 
@@ -170,14 +173,14 @@ function love.load(arg)
 	   { 0, 1, 0, 1, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 2, 2, 2, 0, 3, 3, 3, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 2, 0, 0, 0, 3, 0, 3, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 2, 0, 0, 0, 3, 0, 3, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 2, 2, 2, 0, 3, 3, 3, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 1, 0, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 3, 3, 3, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 2, 2, 3, 3, 3, 3, 1, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 2, 0, 3, 3, 3, 3, 1, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 2, 0, 3, 3, 3, 3, 1, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 2, 2, 3, 3, 3, 3, 1, 2, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 3, 3, 3, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -421,7 +424,7 @@ function simul_enemysDefense(unit,x,y)
 	AI_stack.y[AI_stack.top]=y
 	AI_stack.aim_x[AI_stack.top]=x
 	AI_stack.aim_y[AI_stack.top]=y
-	AI_stack.reward[AI_stack.top]=10-math.abs(player.x-x)-math.abs(player.y-y)--must change...
+	AI_stack.reward[AI_stack.top]=0-math.abs(player.x-x)-math.abs(player.y-y)--must change...
 end
 
 function simul_enemysActionAfterMove(unit)
@@ -443,6 +446,7 @@ function enemyTurn()
 			mapstate_clear(moveable,1)
 			minReward=-999
 			for i=1,AI_stack.top do
+				print(AI_stack.reward[i])
 				if AI_stack.reward[i]>minReward then
 					minReward=AI_stack.reward[i]
 					action=AI_stack.actions[i]
@@ -478,8 +482,10 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 			end
 		elseif state==1 then
 			move_character(x,y)
+			atk_click(x,y)
 			action_buttons_click(pos_x,pos_y)
 		elseif state==2 then
+			atk_click(x,y)
 			action_buttons_click(pos_x,pos_y)
 		elseif state==3 then
 			atk_click(x,y)
