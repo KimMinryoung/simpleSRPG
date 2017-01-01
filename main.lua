@@ -13,6 +13,8 @@ function love.load(arg)
 	temp_x=0
 	temp_y=0
 
+	ending=0
+
 	turn=1
 
 	state=0--0:default 1:pressed a character 2:moved and preparing an action 3:attack 4:skill
@@ -129,7 +131,7 @@ function love.load(arg)
 			if self.nowHP==0 then
 				if real then
 					if self==player then
-						love.graphics.print("Game Over...",400,400)
+						ending=2
 					end	
 					units[instance.num]=nil
 				end
@@ -161,16 +163,16 @@ function love.load(arg)
 
 	unit1 = Unit.new(2,"Jol1",80,5,7,10,70,10,atk_ranges[3],"jol")
 	unit2 = Unit.new(2,"Jol2",50,5,2,5,40,15,atk_ranges[1],"jol")
-	unit3 = Unit.new(2,"Jol3",50,5,2,18,40,20,atk_ranges[4],"jol")
+	unit3 = Unit.new(2,"Jol3",30,5,20,5,40,0,atk_ranges[4],"jol")
 
 	map={
 	   { 0, 0, 3, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}, 
 	   { 0, 0, 3, 0, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0},
-	   { 0, 0, 3, 0, 2, 2, 2, 0, 3, 3, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 3, 0, 3, 0, 2, 2, 2, 0, 3, 3, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 3, 3, 0, 0, 0, 3, 3, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 1, 3, 3, 3, 3, 3, 3, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 1, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 3, 0, 2, 2, 2, 0, 3, 3, 3, 3, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 3, 0, 3, 0, 2, 2, 2, 0, 3, 3, 0, 3, 1, 1, 3, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 3, 3, 0, 0, 0, 3, 3, 0, 3, 1, 0, 3, 0, 0, 0, 0, 0},
+	   { 0, 1, 0, 1, 3, 3, 3, 3, 3, 3, 0, 3, 1, 1, 3, 0, 0, 0, 0, 0},
+	   { 0, 1, 0, 1, 3, 3, 3, 3, 3, 3, 0, 3, 3, 3, 3, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -224,6 +226,7 @@ function love.draw(dt)
 	display_atkable()
 	display_buttons()
 	display_chara_info()
+	display_main_info()
 end
 
 function love.update(dt)
@@ -293,15 +296,17 @@ function action_buttons_click(pos_x,pos_y)
 end
 
 function atk_click(x,y)
-	if atkable[y][x]==0 then
-		return
-	end
-	for k,unit in pairs(units) do
-		if unit.x==x and unit.y==y and unit.type==2 then
-			doAtk(player,unit)
-			state_stack_clear()
-			turn=turn+1
-			state=0
+	if x>=1 and x<=map_w and y>=1 and y<=map_h then
+		if atkable[y][x]==0 then
+			return
+		end
+		for k,unit in pairs(units) do
+			if unit.x==x and unit.y==y and unit.type==2 then
+				doAtk(player,unit)
+				state_stack_clear()
+				turn=turn+1
+				state=0
+			end
 		end
 	end
 end
@@ -439,8 +444,10 @@ function simul_enemysActionAfterMove(unit)
 end
 
 function enemyTurn()
+	enemynumber=0
 	for k,unit in pairs(units) do
 		if unit.type==2 then
+			enemynumber=enemynumber+1
 			moveable_tiles(unit.speed,unit.x,unit.y,unit)
 			simul_enemysActionAfterMove(unit)
 			mapstate_clear(moveable,1)
@@ -464,6 +471,9 @@ function enemyTurn()
 			end
 			AI_stack_clear()
 		end
+	end
+	if enemynumber==0 then
+		ending=1
 	end
 	turn=turn+1
 end
@@ -606,6 +616,16 @@ function display_chara_info()
 	end
 	pos_x,pos_y=map_point_to_real_point(unit.x,unit.y)
 	love.graphics.print(unit.nowHP.."/"..unit.maxHP,pos_x+20,pos_y-20)
+end
+
+function display_main_info()
+	love.graphics.setNewFont(40)
+	if ending==2 then
+		love.graphics.print("Game Over...",250,500)
+	elseif ending==1 then
+		love.graphics.print("Mission Success!",250,500)
+	end
+	love.graphics.setNewFont(20)
 end
 
 function between(x,min,max)
