@@ -21,6 +21,8 @@ function love.load(arg)
 	state_stack.x={}
 	state_stack.y={}
 
+	info_displaying_chara_num=0
+
 	atk_ranges={}
 	atk_ranges[1]={
 		{0,0,0,0,0,0,0,0,0},
@@ -89,15 +91,17 @@ function love.load(arg)
 		{0,0,0,0,0,0,0,0,0}
 	}
 	Unit = {}  
-	Unit.new = function(name, HP,speed,x,y,atk_range,img)  
-		local instance = {}  
-		local defaultHP = 100
+	Unit.new = function(type,name, HP,speed,x,y,atk,dfs,atk_range,img)  
+		local instance = {}
+		instance.type=type
 		instance.name = name
 		instance.maxHP = HP
 		instance.nowHP = HP
 		instance.speed=speed
 		instance.x=x
 		instance.y=y
+		instance.atk=atk
+		instance.dfs=dfs
 		instance.atk_range=atk_range
 		instance.img=love.graphics.newImage(img..".png")
    
@@ -105,40 +109,42 @@ function love.load(arg)
 			self.nowHP = math.min(hp,self.maxHP)  
 		end
 
-		instance.printInfo = function(self)  
+		instance.print_info = function(self)
 			print("name : " .. self.name , "HP : " .. self.nowHP.."/"..self.maxHP)  
-		end  
+		end
+
+		instance.get_attack = function(self,other_unit)
+			self.nowHP=math.max(0,self.nowHP-math.max(1,other_unit.atk-self.dfs))
+		end
    
-		return instance  
+		return instance
 	end
 	units={}
-	player= Unit.new("Player",100,6,1,1,atk_ranges[4],"player")
+	player= Unit.new(1,"Player",100,6,1,1,40,30,atk_ranges[4],"player")
 	units[1]=player
 
-	unit1 = Unit.new("Jol1", 80,5,7,10,atk_ranges[3],"jol")
+	unit1 = Unit.new(2,"Jol1",80,5,7,10,70,10,atk_ranges[3],"jol")
 	units[2]=unit1
-	unit2 = Unit.new("Jol2", 80,5,2,5,atk_ranges[1],"jol")
+	unit2 = Unit.new(2,"Jol2",50,5,2,5,40,15,atk_ranges[1],"jol")
 	units[3]=unit2
-	unit1:setHP(70)
-	unit1:printInfo()
 
 	map={
-	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
-	   { 0, 0, 3, 0, 2, 2, 2, 0, 3, 0, 3, 0, 1, 1, 1, 0, 0, 0, 0, 0},
-	   { 0, 0, 3, 0, 2, 2, 2, 0, 3, 0, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 3, 0, 3, 0, 2, 2, 2, 0, 0, 3, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 1, 3, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 1, 0, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 3, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}, 
+	   { 0, 0, 3, 0, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0},
+	   { 0, 0, 3, 0, 2, 2, 2, 0, 3, 3, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 3, 0, 3, 0, 2, 2, 2, 0, 3, 3, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 3, 3, 0, 0, 0, 3, 3, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 1, 0, 1, 3, 3, 3, 3, 3, 3, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0},
+	   { 0, 1, 0, 1, 3, 3, 3, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 2, 2, 2, 0, 3, 3, 3, 0, 1, 1, 1, 0, 2, 0, 0, 0, 0, 0, 0},
-	   { 0, 2, 0, 0, 0, 3, 0, 3, 0, 1, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0},
-	   { 0, 2, 0, 0, 0, 3, 0, 3, 0, 1, 0, 1, 0, 2, 0, 0, 0, 0, 0, 0},
-	   { 0, 2, 2, 2, 0, 3, 3, 3, 0, 1, 1, 1, 0, 2, 2, 2, 0, 0, 0, 0},
-	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 2, 2, 2, 0, 3, 3, 3, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 2, 0, 0, 0, 3, 0, 3, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 2, 0, 0, 0, 3, 0, 3, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 2, 2, 2, 0, 3, 3, 3, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 3, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -182,6 +188,7 @@ function love.draw(dt)
 	display_moveable()
 	display_atkable()
 	display_buttons()
+	display_chara_info()
 end
 
 function love.update(dt)
@@ -243,6 +250,20 @@ function action_buttons_click(pos_x,pos_y)
 	end
 end
 
+function atk_click(x,y)
+	if atkable[y][x]==0 then
+		return
+	end
+	for k,unit in pairs(units) do
+		if unit.x==x and unit.y==y and unit.type==2 then
+			info_displaying_chara_num=k
+			unit:get_attack(player)
+			state_stack_clear()
+			state=0
+		end
+	end
+end
+
 function mapstate_set()
 	if state==1 then
 		moveable_tiles(player.speed,player.x,player.y)
@@ -295,6 +316,8 @@ function load_state()
 end
 
 function state_stack_clear()
+	mapstate_clear(moveable,1)
+	mapstate_clear(atkable,0)
 	state_stack.top=0
 	state_stack.states={}
 	state_stack.x={}
@@ -315,10 +338,16 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 			action_buttons_click(pos_x,pos_y)
 		elseif state==2 then
 			action_buttons_click(pos_x,pos_y)
+		elseif state==3 then
+			atk_click(x,y)
 		end
 	elseif button == 2 then
 		if state==0 then
-			--do nothing
+			for k,unit in pairs(units) do
+				if unit.x==x and unit.y==y then
+					info_displaying_chara_num=k
+				end
+			end
 			--maybe add option menu later
 			--or display character infos like jojojeon
 		elseif state==1 then
@@ -385,7 +414,6 @@ function atkable_tiles(ctr_x,ctr_y,atk_range)
 end
 
 function display_moveable()
-	love.graphics.setColor(255, 255, 255, 100)
 	for y=1, map_display_h do
 		for x=1, map_display_w do
 			if(moveable[y+map_y][x+map_x]<=0) then
@@ -396,11 +424,9 @@ function display_moveable()
 			end
 		end
 	end
-	love.graphics.setColor(255, 255, 255, 255)
 end
 
 function display_atkable()
-	love.graphics.setColor(255, 255, 255, 150)
 	for y=1, map_display_h do
 		for x=1, map_display_w do
 			if(atkable[y+map_y][x+map_x]==1) then
@@ -411,7 +437,6 @@ function display_atkable()
 			end
 		end
 	end
-	love.graphics.setColor(255, 255, 255, 255)
 end
 
 function display_buttons()
@@ -423,6 +448,14 @@ function display_buttons()
 				action_buttons[i].y )
 		end
 	end
+end
+
+function display_chara_info()
+	if(info_displaying_chara_num==0) then
+		return
+	end
+	unit=units[info_displaying_chara_num]
+	love.graphics.print(unit.nowHP.."/"..unit.maxHP ,600, 100)
 end
 
 function between(x,min,max)
