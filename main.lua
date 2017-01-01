@@ -281,7 +281,7 @@ function action_buttons_click(pos_x,pos_y)
 			elseif i==2 then
 				state=4
 			elseif i==3 then
-				state_stack_clear()
+				doDefense(player)
 				turn=turn+1
 				state=0
 			end
@@ -295,8 +295,7 @@ function atk_click(x,y)
 	end
 	for k,unit in pairs(units) do
 		if unit.x==x and unit.y==y and unit.type==2 then
-			info_displaying_chara_num=unit.num
-			unit:get_attack(player,real)
+			doAtk(player,unit)
 			state_stack_clear()
 			turn=turn+1
 			state=0
@@ -306,7 +305,7 @@ end
 
 function mapstate_set()
 	if state==1 then
-		moveable_tiles(player.speed,player.x,player.y)
+		moveable_tiles(player.speed,player.x,player.y,player)
 		atkable_tiles(player.x,player.y,player.atk_range)
 	elseif state==2 or state==3 then
 		atkable_tiles(player.x,player.y,player.atk_range)
@@ -364,23 +363,73 @@ function state_stack_clear()
 	state_stack.y={}
 end
 
-function enemysAtk(unit,x,y)
+function AI_stack_clear()
+	AI_stack.top=0
+	AI_stack.actions={}
+	AI_stack.x={}
+	AI_stack.y={}
+	AI_stack.aim_x={}
+	AI_stack.aim_y={}
+	AI_stack.reward={}
+end
+
+function doMove(unit,x,y)
+	unit.x=x
+	unit.y=y
+end
+
+function doAtk(attacking_unit,attacked_unit)
+	attacking_unit.defensing=0
+	info_displaying_chara_num=attacked_unit.num
+	attacked_unit:get_attack(attacking_unit,true)
+end
+
+function doDefense(unit)
+	unit.defensing=1
+end
+
+function simul_enemysAtk(unit,x,y)
 	atkable_tiles(x,y,unit.atk_range)
-	for y=1, map_h do
-		for x=1, map_w do
-			if(atkable[y][x]==1) then
-				
+	for aim_y=1, map_h do
+		for aim_x=1, map_w do
+			if(atkable[aim_y][aim_x]==1) then
+				our_unit=find_unit_on_this_point(aim_x,aim_y)
+				if our_unit~=nil and our_unit.type==1 then
+					damage,died=our_unit:get_attack(unit,false)
+					AI_stack.top=AI_stack.top+1
+					AI_stack.actions[AI_stack.top]="atk"
+					AI_stack.x[AI_stack.top]=x
+					AI_stack.y[AI_stack.top]=y
+					AI_stack.aim_x[AI_stack.top]=aim_x
+					AI_stack.aim_y[AI_stack.top]=aim_y
+					AI_stack.reward[AI_stack.top]=damage
+					if died then
+						AI_stack.reward[AI_stack.top]=100
+					end
+				end
 			end
 		end
 	end
 	mapstate_clear(atkable,0)
 end
 
-function enemysActionAfterMove(unit)
+
+function simul_enemysDefense(unit,x,y)
+	AI_stack.top=AI_stack.top+1
+	AI_stack.actions[AI_stack.top]="defense"
+	AI_stack.x[AI_stack.top]=x
+	AI_stack.y[AI_stack.top]=y
+	AI_stack.aim_x[AI_stack.top]=x
+	AI_stack.aim_y[AI_stack.top]=y
+	AI_stack.reward[AI_stack.top]=10-math.abs(player.x-x)-math.abs(player.y-y)--must change...
+end
+
+function simul_enemysActionAfterMove(unit)
 	for y=1, map_h do
 		for x=1, map_w do
 			if(moveable[y][x]<=0) then
-				enemysAtk(unit,x,y)
+				simul_enemysAtk(unit,x,y)
+				simul_enemysDefense(unit,x,y)
 			end
 		end
 	end
@@ -389,9 +438,27 @@ end
 function enemyTurn()
 	for k,unit in pairs(units) do
 		if unit.type==2 then
-			moveable_tiles(unit.speed,unit.x,unit.y)
-			enemysActionAfterMove(unit)
+			moveable_tiles(unit.speed,unit.x,unit.y,unit)
+			simul_enemysActionAfterMove(unit)
 			mapstate_clear(moveable,1)
+			minReward=-999
+			for i=1,AI_stack.top do
+				if AI_stack.reward[i]>minReward then
+					minReward=AI_stack.reward[i]
+					action=AI_stack.actions[i]
+					dest_x=AI_stack.x[i]
+					dest_y=AI_stack.y[i]
+					aim_x=AI_stack.aim_x[i]
+					aim_y=AI_stack.aim_y[i]
+				end
+			end
+			doMove(unit,dest_x,dest_y)
+			if action=="atk" then
+				doAtk(unit,find_unit_on_this_point(aim_x,aim_y))
+			elseif action=="defense" then
+				doDefense(unit)
+			end
+			AI_stack_clear()
 		end
 	end
 	turn=turn+1
@@ -451,8 +518,9 @@ function draw_map()
 end
 
 	
-function moveable_tiles(remainStep,x,y)
-	if remainStep<0 then
+function moveable_tiles(remainStep,x,y,unit)
+	unit_on_this_point=find_unit_on_this_point(x,y)
+	if remainStep<0 or (unit_on_this_point~=nil and unit_on_this_point~=unit) then
 		return
 	end
 	if moveable[y][x]<=-remainStep then
@@ -460,19 +528,27 @@ function moveable_tiles(remainStep,x,y)
 	end
 	moveable[y][x]=-remainStep
 	if x-1>=1 then
-		moveable_tiles(remainStep-(cost[map[y][x-1]+1]),x-1,y)
+		moveable_tiles(remainStep-(cost[map[y][x-1]+1]),x-1,y,unit)
 	end
 	if x+1<=map_w then
-		moveable_tiles(remainStep-(cost[map[y][x+1]+1]),x+1,y)
+		moveable_tiles(remainStep-(cost[map[y][x+1]+1]),x+1,y,unit)
 	end
 	if y-1>=1 then
-		moveable_tiles(remainStep-(cost[map[y-1][x]+1]),x,y-1)
+		moveable_tiles(remainStep-(cost[map[y-1][x]+1]),x,y-1,unit)
 	end
 	if y+1<=map_h then
-		moveable_tiles(remainStep-(cost[map[y+1][x]+1]),x,y+1)
+		moveable_tiles(remainStep-(cost[map[y+1][x]+1]),x,y+1,unit)
 	end
 end
 
+function find_unit_on_this_point(x,y)
+	for k,unit in pairs(units) do
+		if unit.x==x and unit.y==y then
+			return unit
+		end
+	end
+	return nil
+end
 
 function atkable_tiles(ctr_x,ctr_y,atk_range)
 	for y=1,9 do
