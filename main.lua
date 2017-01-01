@@ -216,8 +216,37 @@ function love.load(arg)
 	action_buttons={button_atk,button_skill,button_dfs}
 	moveable = {}
 	mapstate_clear(moveable,1)
+	moveable_prev_x={}
+	mapstate_clear(moveable_prev_x,0)
+	moveable_prev_y={}
+	mapstate_clear(moveable_prev_y,0)
 	atkable = {}
 	mapstate_clear(atkable,0)
+end
+
+function co_moving(unit,dest_x,dest_y)
+	print(unit.name)
+	t_x=dest_x
+	t_y=dest_y
+	stack_x={}
+	stack_y={}
+	top=1
+	stack_x[top]=dest_x
+	stack_y[top]=dest_y
+	while not (t_x==unit.x and t_y==unit.y) do
+		top=top+1
+		stack_x[top]=moveable_prev_x[t_y][t_x]
+		stack_y[top]=moveable_prev_y[t_y][t_x]
+		t_x=stack_x[top]
+		t_y=stack_y[top]
+	end
+	print("top : "..top)
+	for i=top,1,-1 do
+		print(i)
+		coroutine.yield()
+		unit.x=stack_x[i]
+		unit.y=stack_y[i]
+	end
 end
 
 function love.draw(dt)
@@ -231,9 +260,6 @@ end
 
 function love.update(dt)
 	--playable character da hangdonghatna check
-	if turn%2==0 then
-		enemyTurn()
-	end
 end
 
 function love.keypressed(key, unicode)
@@ -265,12 +291,18 @@ function map_point_to_real_point(x,y)
 	return pos_x,pos_y
 end
 
+function pass_turn()
+	turn=turn+1
+	if turn%2==0 then
+		enemyTurn()
+	end
+end
+
 function move_character(x,y)
 	if x>=1 and x<=map_w and y>=1 and y<=map_h then
 		if moveable[y][x]<=0 then
 			save_state()
-			player.x=x
-			player.y=y
+			doMove(player,x,y)
 			state=2
 			mapstate_set()
 		end
@@ -288,7 +320,7 @@ function action_buttons_click(pos_x,pos_y)
 				state=4
 			elseif i==3 then
 				doDefense(player)
-				turn=turn+1
+				pass_turn()
 				state=0
 			end
 		end
@@ -304,7 +336,7 @@ function atk_click(x,y)
 			if unit.x==x and unit.y==y and unit.type==2 then
 				doAtk(player,unit)
 				state_stack_clear()
-				turn=turn+1
+				pass_turn()
 				state=0
 			end
 		end
@@ -381,9 +413,16 @@ function AI_stack_clear()
 	AI_stack.reward={}
 end
 
-function doMove(unit,x,y)
-	unit.x=x
-	unit.y=y
+function doMove(unit,dest_x,dest_y)
+	moveable_tiles(unit.speed,unit.x,unit.y,unit)
+	local do_move = coroutine.create(co_moving)
+	coroutine.resume(do_move,unit,dest_x,dest_y)
+	while coroutine.status(do_move) ~= "dead" do
+		coroutine.resume(do_move)
+		print(coroutine.status(do_move))
+	end
+	print("doMove ended")
+	mapstate_clear(moveable,1)
 end
 
 function doAtk(attacking_unit,attacked_unit)
@@ -453,7 +492,6 @@ function enemyTurn()
 			mapstate_clear(moveable,1)
 			minReward=-999
 			for i=1,AI_stack.top do
-				print(AI_stack.reward[i])
 				if AI_stack.reward[i]>minReward then
 					minReward=AI_stack.reward[i]
 					action=AI_stack.actions[i]
@@ -475,7 +513,7 @@ function enemyTurn()
 	if enemynumber==0 then
 		ending=1
 	end
-	turn=turn+1
+	pass_turn()
 end
 
 function love.mousepressed(pos_x, pos_y, button, istouch)
@@ -543,18 +581,30 @@ function moveable_tiles(remainStep,x,y,unit)
 		return
 	end
 	moveable[y][x]=-remainStep
+	moveable_prev_x[y][x]=temp_x
+	moveable_prev_y[y][x]=temp_y
+	temp_x=x
+	temp_y=y
 	if x-1>=1 then
 		moveable_tiles(remainStep-(cost[map[y][x-1]+1]),x-1,y,unit)
 	end
+	temp_x=x
+	temp_y=y
 	if x+1<=map_w then
 		moveable_tiles(remainStep-(cost[map[y][x+1]+1]),x+1,y,unit)
 	end
+	temp_x=x
+	temp_y=y
 	if y-1>=1 then
 		moveable_tiles(remainStep-(cost[map[y-1][x]+1]),x,y-1,unit)
 	end
+	temp_x=x
+	temp_y=y
 	if y+1<=map_h then
 		moveable_tiles(remainStep-(cost[map[y+1][x]+1]),x,y+1,unit)
 	end
+	temp_x=0
+	temp_y=0
 end
 
 function find_unit_on_this_point(x,y)
