@@ -13,6 +13,8 @@ function love.load(arg)
 	temp_x=0
 	temp_y=0
 
+	turn=1
+
 	state=0--0:default 1:pressed a character 2:moved and preparing an action 3:attack 4:skill
 
 	state_stack={}
@@ -90,10 +92,15 @@ function love.load(arg)
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0}
 	}
+	units={}
+	units_number=0
 	Unit = {}  
-	Unit.new = function(type,name, HP,speed,x,y,atk,dfs,atk_range,img)  
+	Unit.new = function(type,name, HP,speed,x,y,atk,dfs,atk_range,img)
+		units_number=units_number+1
 		local instance = {}
 		instance.type=type
+		instance.num=units_number
+		units[instance.num]=instance
 		instance.name = name
 		instance.maxHP = HP
 		instance.nowHP = HP
@@ -106,7 +113,10 @@ function love.load(arg)
 		instance.img=love.graphics.newImage(img..".png")
    
 		instance.setHP = function(self, hp)
-			self.nowHP = math.min(hp,self.maxHP)  
+			self.nowHP = math.max(0,math.min(hp,self.maxHP))
+			if self.nowHP==0 then
+				units[instance.num]=nil
+			end
 		end
 
 		instance.print_info = function(self)
@@ -114,21 +124,16 @@ function love.load(arg)
 		end
 
 		instance.get_attack = function(self,other_unit)
-			self.nowHP=math.max(0,self.nowHP-math.max(1,other_unit.atk-self.dfs))
+			self:setHP(self.nowHP-math.max(1,other_unit.atk-self.dfs))
 		end
    
 		return instance
 	end
-	units={}
 	player= Unit.new(1,"Player",100,6,1,1,40,30,atk_ranges[4],"player")
-	units[1]=player
 
 	unit1 = Unit.new(2,"Jol1",80,5,7,10,70,10,atk_ranges[3],"jol")
-	units[2]=unit1
 	unit2 = Unit.new(2,"Jol2",50,5,2,5,40,15,atk_ranges[1],"jol")
-	units[3]=unit2
 	unit3 = Unit.new(2,"Jol3",50,5,2,18,40,20,atk_ranges[1],"jol")
-	units[4]=unit3
 
 	map={
 	   { 0, 0, 3, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}, 
@@ -194,6 +199,10 @@ function love.draw(dt)
 end
 
 function love.update(dt)
+	--playable character da hangdonghatna check
+	if turn%2==0 then
+		enemyTurn()
+	end
 end
 
 function love.keypressed(key, unicode)
@@ -248,6 +257,7 @@ function action_buttons_click(pos_x,pos_y)
 				state=4
 			elseif i==3 then
 				state_stack_clear()
+				turn=turn+1
 				state=0
 			end
 		end
@@ -260,9 +270,10 @@ function atk_click(x,y)
 	end
 	for k,unit in pairs(units) do
 		if unit.x==x and unit.y==y and unit.type==2 then
-			info_displaying_chara_num=k
+			info_displaying_chara_num=unit.num
 			unit:get_attack(player)
 			state_stack_clear()
+			turn=turn+1
 			state=0
 		end
 	end
@@ -328,7 +339,15 @@ function state_stack_clear()
 	state_stack.y={}
 end
 
+function enemyTurn()
+
+	turn=turn+1
+end
+
 function love.mousepressed(pos_x, pos_y, button, istouch)
+	if turn%2==0 then
+		return
+	end
 	x,y=real_point_to_map_point(pos_x,pos_y)
 	if button == 1 then
 		if state==0 then
@@ -349,7 +368,7 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 		if state==0 then
 			for k,unit in pairs(units) do
 				if unit.x==x and unit.y==y then
-					info_displaying_chara_num=k
+					info_displaying_chara_num=unit.num
 				end
 			end
 			--maybe add option menu later
@@ -447,6 +466,9 @@ function display_chara_info()
 		return
 	end
 	unit=units[info_displaying_chara_num]
+	if unit==nil then
+		return
+	end
 	pos_x,pos_y=map_point_to_real_point(unit.x,unit.y)
 	love.graphics.print(unit.nowHP.."/"..unit.maxHP,pos_x+20,pos_y-20)
 end
