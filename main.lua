@@ -13,7 +13,7 @@ function love.load(arg)
 	temp_x=0
 	temp_y=0
 
-	state=0--0:default 1:pressed a character 2:moved and preparing an action
+	state=0--0:default 1:pressed a character 2:moved and preparing an action 3:attack 4:skill
 
 	state_stack={}
 	state_stack.top=0
@@ -77,34 +77,29 @@ function love.load(arg)
 		{0,0,0,1,0,1,0,0,0},
 		{0,0,0,0,1,0,0,0,0}
 	}
-
-	player={}
-
-	player.speed=6
-	player.x=1
-	player.y=1
-	player.atk_range=atk_ranges[4]
+	atk_ranges[6]={
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0}
+	}
 	Unit = {}  
-	Unit.new = function(name, HP,speed,x,y,atk_range)  
+	Unit.new = function(name, HP,speed,x,y,atk_range,img)  
 		local instance = {}  
 		local defaultHP = 100
-		instance.name = name or "anonymous"
-		instance.maxHP = HP or defaultHP
-		instance.nowHP = HP or defaultHP
-		instance.speed=speed or 0
-		instance.x=x or 0
-		instance.y=y or 0
-		instance.atk_range=atk_range or {
-			{0,0,0,0,0,0,0,0,0},
-			{0,0,0,0,0,0,0,0,0},
-			{0,0,0,0,0,0,0,0,0},
-			{0,0,0,0,0,0,0,0,0},
-			{0,0,0,0,0,0,0,0,0},
-			{0,0,0,0,0,0,0,0,0},
-			{0,0,0,0,0,0,0,0,0},
-			{0,0,0,0,0,0,0,0,0},
-			{0,0,0,0,0,0,0,0,0}
-		}
+		instance.name = name
+		instance.maxHP = HP
+		instance.nowHP = HP
+		instance.speed=speed
+		instance.x=x
+		instance.y=y
+		instance.atk_range=atk_range
+		instance.img=love.graphics.newImage(img..".png")
    
 		instance.setHP = function(self, hp)
 			self.nowHP = math.min(hp,self.maxHP)  
@@ -116,20 +111,25 @@ function love.load(arg)
    
 		return instance  
 	end
-   
-	unit1 = Unit.new("Jol1", 80,5,1,1,atk_ranges[3])
-	unit2 = Unit.new("Jol2", 80,5,5,5,atk_ranges[1])
+	units={}
+	player= Unit.new("Player",100,6,1,1,atk_ranges[4],"player")
+	units[1]=player
+
+	unit1 = Unit.new("Jol1", 80,5,7,10,atk_ranges[3],"jol")
+	units[2]=unit1
+	unit2 = Unit.new("Jol2", 80,5,2,5,atk_ranges[1],"jol")
+	units[3]=unit2
 	unit1:setHP(70)
 	unit1:printInfo()
 
 	map={
-	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
-	   { 0, 1, 0, 0, 2, 2, 2, 0, 3, 0, 3, 0, 1, 1, 1, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 0, 2, 0, 2, 0, 3, 0, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 1, 1, 0, 2, 2, 2, 0, 0, 3, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}, 
+	   { 0, 0, 3, 0, 2, 2, 2, 0, 3, 0, 3, 0, 1, 1, 1, 0, 0, 0, 0, 0},
+	   { 0, 0, 3, 0, 2, 2, 2, 0, 3, 0, 3, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 3, 0, 3, 0, 2, 2, 2, 0, 0, 3, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0},
+	   { 0, 1, 0, 1, 3, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0},
+	   { 0, 1, 0, 1, 0, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -150,7 +150,6 @@ function love.load(arg)
 	end
 	cost={1,2,4,9}
 	love.graphics.setNewFont(12)
-	player.img=love.graphics.newImage("player.png")
 	moveable_layer=love.graphics.newImage("moveable_layer.png")
 	atkable_layer=love.graphics.newImage("atkable_layer.png")
 	button_atk={}
@@ -339,11 +338,13 @@ function draw_map()
 			tile[map[y+map_y][x+map_x]],
 			(x*tile_w)+map_offset_x, 
 			(y*tile_h)+map_offset_y )
-			if y+map_y==player.y and x+map_x==player.x then
-				love.graphics.draw( 
-				player.img, 
-				(x*tile_w)+map_offset_x, 
-				(y*tile_h)+map_offset_y )
+			for k,unit in pairs(units) do
+				if y+map_y==unit.y and x+map_x==unit.x then
+					love.graphics.draw( 
+					unit.img, 
+					(x*tile_w)+map_offset_x, 
+					(y*tile_h)+map_offset_y )
+				end
 			end
 		end
 	end
