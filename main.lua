@@ -23,6 +23,15 @@ function love.load(arg)
 	state_stack.x={}
 	state_stack.y={}
 
+	AI_stack={}
+	AI_stack.top=0
+	AI_stack.actions={}
+	AI_stack.x={}
+	AI_stack.y={}
+	AI_stack.aim_x={}
+	AI_stack.aim_y={}
+	AI_stack.reward={}
+
 	info_displaying_chara_num=0
 
 	atk_ranges={}
@@ -110,21 +119,37 @@ function love.load(arg)
 		instance.atk=atk
 		instance.dfs=dfs
 		instance.atk_range=atk_range
+		instance.defensing=0--0:not defensing 1:defensing 2:super defensing?(skill)
 		instance.img=love.graphics.newImage(img..".png")
    
-		instance.setHP = function(self, hp)
-			self.nowHP = math.max(0,math.min(hp,self.maxHP))
-			if self.nowHP==0 then
-				units[instance.num]=nil
+		instance.setHP = function(self, hp,real)
+			if real then
+				self.nowHP = math.max(0,math.min(hp,self.maxHP))
 			end
+			if self.nowHP==0 then
+				if real then
+					units[instance.num]=nil
+				end
+				return true--died
+			end
+			return false--didn't die
 		end
 
 		instance.print_info = function(self)
 			print("name : " .. self.name , "HP : " .. self.nowHP.."/"..self.maxHP)  
 		end
 
-		instance.get_attack = function(self,other_unit)
-			self:setHP(self.nowHP-math.max(1,other_unit.atk-self.dfs))
+		instance.get_attack = function(self,other_unit,real)
+			if self.defensing==0 then
+				damage=math.floor(other_unit.atk-self.dfs)
+			elseif self.defensing==1 then
+				damage=math.floor(other_unit.atk-self.dfs*0.75)
+			elseif self.defensing==2 then
+				damage=math.floor(other_unit.atk-self.dfs*0.5)
+			end
+			damage=math.max(1,damage)
+			died=self:setHP(self.nowHP-math.max(1,other_unit.atk-self.dfs),real)
+			return damage,died
 		end
    
 		return instance
@@ -271,7 +296,7 @@ function atk_click(x,y)
 	for k,unit in pairs(units) do
 		if unit.x==x and unit.y==y and unit.type==2 then
 			info_displaying_chara_num=unit.num
-			unit:get_attack(player)
+			unit:get_attack(player,real)
 			state_stack_clear()
 			turn=turn+1
 			state=0
@@ -339,8 +364,36 @@ function state_stack_clear()
 	state_stack.y={}
 end
 
-function enemyTurn()
+function enemysAtk(unit,x,y)
+	atkable_tiles(x,y,unit.atk_range)
+	for y=1, map_h do
+		for x=1, map_w do
+			if(atkable[y][x]==1) then
+				
+			end
+		end
+	end
+	mapstate_clear(atkable,0)
+end
 
+function enemysActionAfterMove(unit)
+	for y=1, map_h do
+		for x=1, map_w do
+			if(moveable[y][x]<=0) then
+				enemysAtk(unit,x,y)
+			end
+		end
+	end
+end
+
+function enemyTurn()
+	for k,unit in pairs(units) do
+		if unit.type==2 then
+			moveable_tiles(unit.speed,unit.x,unit.y)
+			enemysActionAfterMove(unit)
+			mapstate_clear(moveable,1)
+		end
+	end
 	turn=turn+1
 end
 
