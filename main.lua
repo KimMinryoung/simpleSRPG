@@ -127,6 +127,8 @@ function love.load(arg)
 	units[2]=unit1
 	unit2 = Unit.new(2,"Jol2",50,5,2,5,40,15,atk_ranges[1],"jol")
 	units[3]=unit2
+	unit3 = Unit.new(2,"Jol3",50,5,2,18,40,20,atk_ranges[1],"jol")
+	units[4]=unit3
 
 	map={
 	   { 0, 0, 3, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}, 
@@ -145,7 +147,7 @@ function love.load(arg)
 	   { 0, 2, 0, 0, 0, 3, 0, 3, 1, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 2, 2, 2, 0, 3, 3, 3, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 3, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -155,7 +157,7 @@ function love.load(arg)
 		tile[i]=love.graphics.newImage("tile"..i..".png")
 	end
 	cost={1,2,4,9}
-	love.graphics.setNewFont(12)
+	love.graphics.setNewFont(20)
 	moveable_layer=love.graphics.newImage("moveable_layer.png")
 	atkable_layer=love.graphics.newImage("atkable_layer.png")
 	button_atk={}
@@ -212,23 +214,25 @@ function love.keypressed(key, unicode)
 	end
 end
 
-function mouse_to_map_point(mouse_x,mouse_y)
-	x=math.floor((mouse_x-map_offset_x)/tile_w)+map_x
-	y=math.floor((mouse_y-map_offset_y)/tile_h)+map_y
+function real_point_to_map_point(pos_x,pos_y)
+	x=math.floor((pos_x-map_offset_x)/tile_w)+map_x
+	y=math.floor((pos_y-map_offset_y)/tile_h)+map_y
 	return x,y
+end
+function map_point_to_real_point(x,y)
+	pos_x=((x-map_x)*tile_w)+map_offset_x
+	pos_y=((y-map_y)*tile_h)+map_offset_y
+	return pos_x,pos_y
 end
 
 function move_character(x,y)
 	if x>=1 and x<=map_w and y>=1 and y<=map_h then
 		if moveable[y][x]<=0 then
-			print("moveable point")
 			save_state()
 			player.x=x
 			player.y=y
 			state=2
 			mapstate_set()
-		else
-			print("not moveable point")
 		end
 	end
 end
@@ -325,7 +329,7 @@ function state_stack_clear()
 end
 
 function love.mousepressed(pos_x, pos_y, button, istouch)
-	x,y=mouse_to_map_point(pos_x,pos_y)
+	x,y=real_point_to_map_point(pos_x,pos_y)
 	if button == 1 then
 		if state==0 then
 			if player.x==x and player.y==y then
@@ -363,16 +367,11 @@ end
 function draw_map()
 	for y=1, map_display_h do
 		for x=1, map_display_w do
-			love.graphics.draw( 
-			tile[map[y+map_y][x+map_x]],
-			(x*tile_w)+map_offset_x, 
-			(y*tile_h)+map_offset_y )
+			pos_x,pos_y=map_point_to_real_point(x+map_x,y+map_y)
+			love.graphics.draw(tile[map[y+map_y][x+map_x]], pos_x, pos_y)
 			for k,unit in pairs(units) do
 				if y+map_y==unit.y and x+map_x==unit.x then
-					love.graphics.draw( 
-					unit.img, 
-					(x*tile_w)+map_offset_x, 
-					(y*tile_h)+map_offset_y )
+					love.graphics.draw(unit.img, pos_x, pos_y)
 				end
 			end
 		end
@@ -417,10 +416,8 @@ function display_moveable()
 	for y=1, map_display_h do
 		for x=1, map_display_w do
 			if(moveable[y+map_y][x+map_x]<=0) then
-				love.graphics.draw( 
-					moveable_layer, 
-					(x*tile_w)+map_offset_x, 
-					(y*tile_h)+map_offset_y )
+				pos_x,pos_y=map_point_to_real_point(x+map_x,y+map_y)
+				love.graphics.draw(moveable_layer, pos_x, pos_y)
 			end
 		end
 	end
@@ -430,10 +427,8 @@ function display_atkable()
 	for y=1, map_display_h do
 		for x=1, map_display_w do
 			if(atkable[y+map_y][x+map_x]==1) then
-				love.graphics.draw( 
-					atkable_layer, 
-					(x*tile_w)+map_offset_x, 
-					(y*tile_h)+map_offset_y )
+				pos_x,pos_y=map_point_to_real_point(x+map_x,y+map_y)
+				love.graphics.draw(atkable_layer, pos_x, pos_y)
 			end
 		end
 	end
@@ -442,10 +437,7 @@ end
 function display_buttons()
 	if state==1 or state==2 then
 		for i=1, 3 do
-			love.graphics.draw( 
-				action_buttons[i].img,
-				action_buttons[i].x, 
-				action_buttons[i].y )
+			love.graphics.draw(action_buttons[i].img,action_buttons[i].x, action_buttons[i].y)
 		end
 	end
 end
@@ -455,7 +447,8 @@ function display_chara_info()
 		return
 	end
 	unit=units[info_displaying_chara_num]
-	love.graphics.print(unit.nowHP.."/"..unit.maxHP ,600, 100)
+	pos_x,pos_y=map_point_to_real_point(unit.x,unit.y)
+	love.graphics.print(unit.nowHP.."/"..unit.maxHP,pos_x+20,pos_y-20)
 end
 
 function between(x,min,max)
