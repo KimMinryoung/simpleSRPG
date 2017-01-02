@@ -170,6 +170,7 @@ function love.load(arg)
 			end
 			if self.nowHP==0 then
 				if real then
+					SE_retreat:play()
 					if self.type==1 then
 						ending=2
 					end	
@@ -254,6 +255,15 @@ function love.load(arg)
 	button_dfs.width=67
 	button_dfs.height=67
 	action_buttons={button_atk,button_skill,button_dfs}
+
+	-- sound effects
+
+	SE_click=love.audio.newSource("SE_click.wav","static")
+	SE_cancel=love.audio.newSource("SE_cancel.wav","static")
+	SE_get_atk=love.audio.newSource("SE_get_atk.wav","static")
+	SE_walk=love.audio.newSource("SE_walk.wav","static")
+	SE_retreat=love.audio.newSource("SE_retreat.wav","static")
+
 	moveable = {}
 	for y=1,map_h do
 		moveable[y]={}
@@ -293,6 +303,7 @@ function co_moving(unit,dest_x,dest_y)
 		t_y=stack_y[top]
 	end
 	for i=top,1,-1 do
+		SE_walk:play()
 		coroutine.yield()
 		unit.x=stack_x[i]
 		unit.y=stack_y[i]
@@ -307,6 +318,7 @@ function co_atk(attacking_unit,attacked_unit)
 	attacking_unit.defensing=0
 	info_displaying_chara_num=attacked_unit.num
 	coroutine.yield()
+	SE_get_atk:play()
 	coroutine.yield()
 	attacked_unit:get_attack(attacking_unit,true)
 	mapstate_clear(atkable,0)
@@ -406,6 +418,7 @@ end
 function move_character(unit,x,y)
 	if x>=1 and x<=map_w and y>=1 and y<=map_h then
 		if moveable[y][x]<=0 then
+			SE_click:play()
 			save_state()
 			doMove(unit,x,y)
 		end
@@ -416,12 +429,14 @@ function action_buttons_click(unit,pos_x,pos_y)
 	for i=1,3 do
 		if between(pos_x,action_buttons[i].x,action_buttons[i].x+action_buttons[i].width) and between(pos_y,action_buttons[i].y,action_buttons[i].y+action_buttons[i].height) then
 			if i==1 then
+				SE_click:play()
 				save_state()
 				state=3
 				mapstate_set(unit)
 			elseif i==2 then
 				--do nothing
 			elseif i==3 then
+				SE_click:play()
 				save_state()
 				do_defense=coroutine.create(co_defense)
 				coroutine.resume(do_defense,unit)
@@ -437,6 +452,7 @@ function atk_click(x,y)
 		end
 		unit=find_unit_on_this_point(x,y)
 		if unit~=nil and unit.type==2 then
+			SE_click:play()
 			do_atk=coroutine.create(co_atk)
 			coroutine.resume(do_atk,player,unit)
 		end
@@ -611,6 +627,7 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 	if button == 1 then
 		if state==0 then
 			if clicked_unit~=nil and clicked_unit.type<=1 and clicked_unit.action_end==false then
+				SE_click:play()
 				save_state()
 				state=1
 				mapstate_set(clicked_unit)
@@ -633,6 +650,7 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 			--maybe add option menu later
 			--or display character infos like jojojeon
 		elseif state==1 or state==2 or state==3 then
+			SE_cancel:play()
 			load_state()
 		end
 	end
