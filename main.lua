@@ -698,6 +698,9 @@ function display_atkable()
 end
 
 function display_buttons()
+	if turn%2==0 then
+		return
+	end
 	if state==1 or state==2 then
 		for i=1, 3 do
 			love.graphics.draw(action_buttons[i].img,action_buttons[i].x, action_buttons[i].y)
