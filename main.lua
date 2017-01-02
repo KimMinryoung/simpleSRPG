@@ -3,7 +3,7 @@ function love.update(dt)
 		love.timer.sleep(1/30 - dt)
 		frame_count=frame_count+1
 	end
-	if frame_count%10==0 then
+	if frame_count%5==0 then
 		if do_move ~= nil and coroutine.status (do_move) ~= "dead" then
 			coroutine.resume (do_move)
 		elseif do_atk ~= nil and coroutine.status (do_atk) ~= "dead" then
@@ -142,7 +142,8 @@ function love.load(arg)
 	}
 	units={}
 	units_number=0
-	Unit = {}  
+	Unit = {}
+	--unit type : 1 - agun, if die game over 0 - agun, even if it dies not game over 2 - enemy
 	Unit.new = function(type,name, HP,speed,x,y,atk,dfs,atk_range,img)
 		units_number=units_number+1
 		local instance = {}
@@ -158,8 +159,10 @@ function love.load(arg)
 		instance.atk=atk
 		instance.dfs=dfs
 		instance.atk_range=atk_range
-		instance.defensing=0--0:not defensing 1:defensing 2:super defensing?(skill)
 		instance.img=love.graphics.newImage(img..".png")
+
+		instance.action_end=false
+		instance.defensing=0--0:not defensing 1:defensing 2:super defensing?(skill)
    
 		instance.setHP = function(self, hp,real)
 			if real then
@@ -167,7 +170,7 @@ function love.load(arg)
 			end
 			if self.nowHP==0 then
 				if real then
-					if self==player then
+					if self.type==1 then
 						ending=2
 					end	
 					units[instance.num]=nil
@@ -198,9 +201,9 @@ function love.load(arg)
 	end
 	player= Unit.new(1,"Player",100,6,1,1,40,30,atk_ranges[4],"player")
 
-	unit1 = Unit.new(2,"Jol1",80,5,7,10,70,10,atk_ranges[3],"jol")
+	unit1 = Unit.new(2,"Jol1",60,5,7,10,70,10,atk_ranges[3],"jol")
 	unit2 = Unit.new(2,"Jol2",50,5,2,5,40,15,atk_ranges[1],"jol")
-	unit3 = Unit.new(2,"Jol3",30,5,20,5,40,0,atk_ranges[4],"jol")
+	unit3 = Unit.new(2,"Jol3",20,5,20,5,40,0,atk_ranges[4],"jol")
 
 	map={
 	   { 0, 0, 3, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}, 
@@ -274,6 +277,7 @@ function love.load(arg)
 end
 
 function co_moving(unit,dest_x,dest_y)
+	mapstate_clear(atkable,0)
 	t_x=dest_x
 	t_y=dest_y
 	stack_x={}
@@ -306,18 +310,18 @@ function co_atk(attacking_unit,attacked_unit)
 	coroutine.yield()
 	attacked_unit:get_attack(attacking_unit,true)
 	mapstate_clear(atkable,0)
-	
-	state_stack_clear()
-	if turn%2==1 then
-		pass_turn()
-	elseif turn%2==0 then
-		AI_stack_clear()
-	end
+
+	action_end_process()
 end
 
 function co_defense(unit)
 	coroutine.yield()
 	unit.defensing=1
+
+	action_end_process()
+end
+
+function action_end_process()
 	state_stack_clear()
 	if turn%2==1 then
 		pass_turn()
@@ -348,8 +352,6 @@ function co_enemy_control()
 			enemynumber=enemynumber+1
 			simul_enemysActionAfterMove(unit)
 			enemyAI_choose_best(unit)
-			state=1
-			save_state()
 			doMove(unit,dest_x,dest_y)
 			coroutine.yield()
 		end
@@ -410,19 +412,19 @@ function move_character(unit,x,y)
 	end
 end
 
-function action_buttons_click(pos_x,pos_y)
+function action_buttons_click(unit,pos_x,pos_y)
 	for i=1,3 do
 		if between(pos_x,action_buttons[i].x,action_buttons[i].x+action_buttons[i].width) and between(pos_y,action_buttons[i].y,action_buttons[i].y+action_buttons[i].height) then
 			if i==1 then
 				save_state()
 				state=3
-				mapstate_set(player)
+				mapstate_set(unit)
 			elseif i==2 then
 				--do nothing
 			elseif i==3 then
 				save_state()
 				do_defense=coroutine.create(co_defense)
-				coroutine.resume(do_defense,player)
+				coroutine.resume(do_defense,unit)
 			end
 		end
 	end
@@ -489,14 +491,10 @@ function save_state()
 	state_stack.atkable[top]=mapstate_copy_and_return(atkable)
 end
 
-function load_state(unit)
-	if state_stack.top==0 then
-		print("can't load (top==0)")
-		return
-	end
+function load_state()
 	local top=state_stack.top
 	state=state_stack.states[top]
-	print("load"..state)
+	print("load state "..state)
 	state_stack.states[top]=nil
 	player.x=state_stack.x[top]
 	state_stack.x[top]=nil
@@ -609,33 +607,33 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 		return
 	end
 	local x,y=real_point_to_map_point(pos_x,pos_y)
+	local clicked_unit=find_unit_on_this_point(x,y)
 	if button == 1 then
 		if state==0 then
-			if player.x==x and player.y==y then
+			if clicked_unit~=nil and clicked_unit.type<=1 and clicked_unit.action_end==false then
 				save_state()
 				state=1
-				mapstate_set(player)
+				mapstate_set(clicked_unit)
 			end
 		elseif state==1 then
 			move_character(player,x,y)
 			atk_click(x,y)
-			action_buttons_click(pos_x,pos_y)
+			action_buttons_click(player,pos_x,pos_y)
 		elseif state==2 then
 			atk_click(x,y)
-			action_buttons_click(pos_x,pos_y)
+			action_buttons_click(player,pos_x,pos_y)
 		elseif state==3 then
 			atk_click(x,y)
 		end
 	elseif button == 2 then
 		if state==0 then
-			local unit=find_unit_on_this_point(x,y)
-			if unit~=nil then
-				info_displaying_chara_num=unit.num
+			if clicked_unit~=nil then
+				info_displaying_chara_num=clicked_unit.num
 			end
 			--maybe add option menu later
 			--or display character infos like jojojeon
 		elseif state==1 or state==2 or state==3 then
-			load_state(player)
+			load_state()
 		end
 	end
 end
