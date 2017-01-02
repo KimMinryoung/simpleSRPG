@@ -3,12 +3,17 @@ function love.update(dt)
 		love.timer.sleep(1/30 - dt)
 		frame_count=frame_count+1
 	end
-	if frame_count%5==0 and do_move ~= nil and coroutine.status (do_move) ~= "dead" then
-		coroutine.resume (do_move)
-	elseif frame_count%5==0 and co_enemyTurn ~= nil and coroutine.status (co_enemyTurn) ~= "dead" then
-		coroutine.resume (co_enemyTurn)
+	if frame_count%10==0 then
+		if do_move ~= nil and coroutine.status (do_move) ~= "dead" then
+			coroutine.resume (do_move)
+		elseif do_atk ~= nil and coroutine.status (do_atk) ~= "dead" then
+			coroutine.resume (do_atk)
+		elseif do_defense ~= nil and coroutine.status (do_defense) ~= "dead" then
+			coroutine.resume (do_defense)
+		elseif do_enemy_control ~= nil and coroutine.status (do_enemy_control) ~= "dead" then
+			coroutine.resume (do_enemy_control)
+		end
 	end
-	--playable character da hangdonghatna check
 end
 
 function love.draw(dt)
@@ -273,25 +278,58 @@ function co_moving(unit,dest_x,dest_y)
 	afterMovingCharacter(unit)
 end
 
+function co_atk(attacking_unit,attacked_unit)
+	atkable_tiles(attacking_unit.x,attacking_unit.y,attacking_unit.atk_range)
+	attacking_unit.defensing=0
+	coroutine.yield()
+	info_displaying_chara_num=attacked_unit.num
+	attacked_unit:get_attack(attacking_unit,true)
+	mapstate_clear(atkable,0)
+	
+	state_stack_clear()
+	if turn%2==1 then
+		pass_turn()
+	elseif turn%2==0 then
+		AI_stack_clear()
+	end
+end
+
+function co_defense(unit)
+	coroutine.yield()
+	unit.defensing=1
+	print("after yield")
+	state_stack_clear()
+	print("after yield")
+	print(state)
+	if turn%2==1 then
+		pass_turn()
+	elseif turn%2==0 then
+		AI_stack_clear()
+	end
+end
+
+function enemyAI_choose_best(unit)
+	minReward=-999
+	for i=1,AI_stack.top do
+		if AI_stack.reward[i]>minReward then
+			minReward=AI_stack.reward[i]
+			action=AI_stack.actions[i]
+			dest_x=AI_stack.x[i]
+			dest_y=AI_stack.y[i]
+			aim_x=AI_stack.aim_x[i]
+			aim_y=AI_stack.aim_y[i]
+		end
+	end
+	AI_stack_clear()
+end
+
 function co_enemy_control()
 	local enemynumber=0
 	for k,unit in pairs(units) do
 		if unit.type==2 then
 			enemynumber=enemynumber+1
-			moveable_tiles(unit.speed,unit.x,unit.y,unit)
 			simul_enemysActionAfterMove(unit)
-			mapstate_clear(moveable,1)
-			minReward=-999
-			for i=1,AI_stack.top do
-				if AI_stack.reward[i]>minReward then
-					minReward=AI_stack.reward[i]
-					action=AI_stack.actions[i]
-					dest_x=AI_stack.x[i]
-					dest_y=AI_stack.y[i]
-					aim_x=AI_stack.aim_x[i]
-					aim_y=AI_stack.aim_y[i]
-				end
-			end
+			enemyAI_choose_best(unit)
 			state=1
 			save_state()
 			doMove(unit,dest_x,dest_y)
@@ -301,7 +339,6 @@ function co_enemy_control()
 	if enemynumber==0 then
 		ending=1
 	end
-	pass_turn()
 end
 
 function love.keypressed(key, unicode)
@@ -341,7 +378,8 @@ function pass_turn()
 end
 
 function enemyTurn()
-	co_enemyTurn=coroutine.create(co_enemy_control)
+	do_enemy_control=coroutine.create(co_enemy_control)
+	coroutine.resume(do_enemy_control)
 end
 
 function move_character(unit,x,y)
@@ -363,9 +401,8 @@ function action_buttons_click(pos_x,pos_y)
 			elseif i==2 then
 				state=4
 			elseif i==3 then
-				doDefense(player)
-				pass_turn()
-				state=0
+				do_defense=coroutine.create(co_defense)
+				coroutine.resume(do_defense,player)
 			end
 		end
 	end
@@ -376,13 +413,10 @@ function atk_click(x,y)
 		if atkable[y][x]==0 then
 			return
 		end
-		for k,unit in pairs(units) do
-			if unit.x==x and unit.y==y and unit.type==2 then
-				doAtk(player,unit)
-				state_stack_clear()
-				pass_turn()
-				state=0
-			end
+		unit=find_unit_on_this_point(x,y)
+		if unit~=nil and unit.type==2 then
+			do_atk=coroutine.create(co_atk)
+			coroutine.resume(do_atk,player,unit)
 		end
 	end
 end
@@ -439,6 +473,7 @@ function load_state()
 end
 
 function state_stack_clear()
+	print("ssc start")
 	mapstate_clear(moveable,1)
 	mapstate_clear(atkable,0)
 	state_stack.top=0
@@ -446,6 +481,7 @@ function state_stack_clear()
 	state_stack.x={}
 	state_stack.y={}
 	state=0
+	print("state : "..state)
 end
 
 function AI_stack_clear()
@@ -461,16 +497,6 @@ function doMove(unit,dest_x,dest_y)
 	moveable_tiles(unit.speed,unit.x,unit.y,unit)
 	do_move = coroutine.create(co_moving)
 	coroutine.resume(do_move,unit,dest_x,dest_y)
-end
-
-function doAtk(attacking_unit,attacked_unit)
-	attacking_unit.defensing=0
-	info_displaying_chara_num=attacked_unit.num
-	attacked_unit:get_attack(attacking_unit,true)
-end
-
-function doDefense(unit)
-	unit.defensing=1
 end
 
 function simul_enemysAtk(unit,x,y)
@@ -510,6 +536,7 @@ function simul_enemysDefense(unit,x,y)
 end
 
 function simul_enemysActionAfterMove(unit)
+	moveable_tiles(unit.speed,unit.x,unit.y,unit)
 	for y=1, map_h do
 		for x=1, map_w do
 			if(moveable[y][x]<=0) then
@@ -518,28 +545,31 @@ function simul_enemysActionAfterMove(unit)
 			end
 		end
 	end
+	mapstate_clear(moveable,1)
 end
 
 function afterMovingCharacter(unit)
 	state=2
 	mapstate_set()
 	if unit.type==2 then
-		print("yeahhh")
 		if action=="atk" then
-			doAtk(unit,find_unit_on_this_point(aim_x,aim_y))
+			do_atk=coroutine.create(co_atk)
+			coroutine.resume(do_atk,unit,find_unit_on_this_point(aim_x,aim_y))
 		elseif action=="defense" then
-			doDefense(unit)
+			do_defense=coroutine.create(co_defense)
+			coroutine.resume(do_defense,unit)
 		end
-		state_stack_clear()
-		AI_stack_clear()
 	end
 end
 
 function love.mousepressed(pos_x, pos_y, button, istouch)
-	if turn%2==0 then
+	if turn%2==0 or (do_move ~= nil and coroutine.status(do_move)~="dead") or 
+		(do_atk ~= nil and coroutine.status(do_atk)~="dead") or
+		(do_enemy_control ~= nil and coroutine.status(do_enemy_control)~="dead") then
+		print("ignore mouse click")
 		return
 	end
-	x,y=real_point_to_map_point(pos_x,pos_y)
+	local x,y=real_point_to_map_point(pos_x,pos_y)
 	if button == 1 then
 		if state==0 then
 			if player.x==x and player.y==y then
@@ -559,10 +589,9 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 		end
 	elseif button == 2 then
 		if state==0 then
-			for k,unit in pairs(units) do
-				if unit.x==x and unit.y==y then
-					info_displaying_chara_num=unit.num
-				end
+			local unit=find_unit_on_this_point(x,y)
+			if unit~=nil then
+				info_displaying_chara_num=unit.num
 			end
 			--maybe add option menu later
 			--or display character infos like jojojeon
