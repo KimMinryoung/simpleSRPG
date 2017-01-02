@@ -57,6 +57,10 @@ function love.load(arg)
 	state_stack.states={}
 	state_stack.x={}
 	state_stack.y={}
+	state_stack.moveable={}
+	state_stack.moveable_prev_x={}
+	state_stack.moveable_prev_y={}
+	state_stack.atkable={}
 
 	AI_stack={}
 	AI_stack.top=0
@@ -248,12 +252,24 @@ function love.load(arg)
 	button_dfs.height=67
 	action_buttons={button_atk,button_skill,button_dfs}
 	moveable = {}
+	for y=1,map_h do
+		moveable[y]={}
+	end
 	mapstate_clear(moveable,1)
 	moveable_prev_x={}
+	for y=1,map_h do
+		moveable_prev_x[y]={}
+	end
 	mapstate_clear(moveable_prev_x,0)
 	moveable_prev_y={}
+	for y=1,map_h do
+		moveable_prev_y[y]={}
+	end
 	mapstate_clear(moveable_prev_y,0)
 	atkable = {}
+	for y=1,map_h do
+		atkable[y]={}
+	end
 	mapstate_clear(atkable,0)
 end
 
@@ -397,13 +413,14 @@ end
 function action_buttons_click(pos_x,pos_y)
 	for i=1,3 do
 		if between(pos_x,action_buttons[i].x,action_buttons[i].x+action_buttons[i].width) and between(pos_y,action_buttons[i].y,action_buttons[i].y+action_buttons[i].height) then
-			save_state()
 			if i==1 then
+				save_state()
 				state=3
 				mapstate_set(player)
 			elseif i==2 then
-				state=4
+				--do nothing
 			elseif i==3 then
+				save_state()
 				do_defense=coroutine.create(co_defense)
 				coroutine.resume(do_defense,player)
 			end
@@ -425,6 +442,8 @@ function atk_click(x,y)
 end
 
 function mapstate_set(unit)
+	mapstate_clear(moveable,1)
+	mapstate_clear(atkable,0)
 	if state==1 then
 		moveable_tiles(unit.speed,unit.x,unit.y,unit)
 		atkable_tiles(unit.x,unit.y,unit.atk_range)
@@ -435,44 +454,63 @@ end
 
 function mapstate_clear(mapstate,num)
 	for y=1,map_h do
-		mapstate[y] = {}
 		for x=1,map_w do
 			mapstate[y][x] = num
 		end
 	end
 end
 
-function save_state()
-	if state==1 then
-		mapstate_clear(moveable,1)
-		mapstate_clear(atkable,0)
-	elseif state==2 or state==3 then
-		mapstate_clear(atkable,0)
+function mapstate_copy(mapstate,copy_map)
+	for y=1,map_h do
+		for x=1,map_w do
+			mapstate[y][x] = copy_map[y][x]
+		end
 	end
-	table.insert(state_stack.states,state)
-	table.insert(state_stack.x,player.x)
-	table.insert(state_stack.y,player.y)
+end
+
+function mapstate_copy_and_return(copy_map)
+	local new_map={}
+	for y=1,map_h do
+		new_map[y]={}
+	end
+	mapstate_copy(new_map,copy_map)
+	return new_map
+end
+
+function save_state()
 	state_stack.top=state_stack.top+1
+	local top=state_stack.top
+	state_stack.states[top]=state
+	state_stack.x[top]=player.x
+	state_stack.y[top]=player.y
+	state_stack.moveable[top]=mapstate_copy_and_return(moveable)
+	state_stack.moveable_prev_x[top]=mapstate_copy_and_return(moveable_prev_x)
+	state_stack.moveable_prev_y[top]=mapstate_copy_and_return(moveable_prev_y)
+	state_stack.atkable[top]=mapstate_copy_and_return(atkable)
 end
 
 function load_state(unit)
 	if state_stack.top==0 then
+		print("can't load (top==0)")
 		return
 	end
-	if state==1 then
-		mapstate_clear(moveable,1)
-		mapstate_clear(atkable,0)
-	elseif state==2 or state==3 then
-		mapstate_clear(atkable,0)
-	end
-	state=state_stack.states[state_stack.top]
-	table.remove(state_stack.states)
-	player.x=state_stack.x[state_stack.top]
-	table.remove(state_stack.x)
-	player.y=state_stack.y[state_stack.top]
-	table.remove(state_stack.y)
+	local top=state_stack.top
+	state=state_stack.states[top]
+	print("load"..state)
+	state_stack.states[top]=nil
+	player.x=state_stack.x[top]
+	state_stack.x[top]=nil
+	player.y=state_stack.y[top]
+	state_stack.y[top]=nil
+	mapstate_copy(moveable,state_stack.moveable[top])
+	state_stack.moveable[top]=nil
+	mapstate_copy(moveable_prev_x,state_stack.moveable_prev_x[top])
+	state_stack.moveable_prev_x[top]=nil
+	mapstate_copy(moveable_prev_y,state_stack.moveable_prev_y[top])
+	state_stack.moveable_prev_y[top]=nil
+	mapstate_copy(atkable,state_stack.atkable[top])
+	state_stack.atkable[top]=nil
 	state_stack.top=state_stack.top-1
-	mapstate_set(unit)
 end
 
 function state_stack_clear()
@@ -596,11 +634,7 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 			end
 			--maybe add option menu later
 			--or display character infos like jojojeon
-		elseif state==1 then
-			load_state(player)
-		elseif state==2 then
-			load_state(player)
-		elseif state==3 then
+		elseif state==1 or state==2 or state==3 then
 			load_state(player)
 		end
 	end
