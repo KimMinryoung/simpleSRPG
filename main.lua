@@ -12,6 +12,9 @@ function love.update(dt)
 			coroutine.resume (do_defense)
 		elseif do_enemy_control ~= nil and coroutine.status (do_enemy_control) ~= "dead" then
 			coroutine.resume (do_enemy_control)
+		elseif state==-1 then
+			state=0
+			pass_turn()
 		end
 	end
 end
@@ -279,10 +282,12 @@ function co_moving(unit,dest_x,dest_y)
 end
 
 function co_atk(attacking_unit,attacked_unit)
+	print(attacking_unit.name.." is attacking "..attacked_unit.name)
 	atkable_tiles(attacking_unit.x,attacking_unit.y,attacking_unit.atk_range)
 	attacking_unit.defensing=0
-	coroutine.yield()
 	info_displaying_chara_num=attacked_unit.num
+	coroutine.yield()
+	coroutine.yield()
 	attacked_unit:get_attack(attacking_unit,true)
 	mapstate_clear(atkable,0)
 	
@@ -297,10 +302,7 @@ end
 function co_defense(unit)
 	coroutine.yield()
 	unit.defensing=1
-	print("after yield")
 	state_stack_clear()
-	print("after yield")
-	print(state)
 	if turn%2==1 then
 		pass_turn()
 	elseif turn%2==0 then
@@ -339,6 +341,7 @@ function co_enemy_control()
 	if enemynumber==0 then
 		ending=1
 	end
+	state=-1
 end
 
 function love.keypressed(key, unicode)
@@ -397,7 +400,7 @@ function action_buttons_click(pos_x,pos_y)
 			save_state()
 			if i==1 then
 				state=3
-				mapstate_set()
+				mapstate_set(player)
 			elseif i==2 then
 				state=4
 			elseif i==3 then
@@ -421,12 +424,12 @@ function atk_click(x,y)
 	end
 end
 
-function mapstate_set()
+function mapstate_set(unit)
 	if state==1 then
-		moveable_tiles(player.speed,player.x,player.y,player)
-		atkable_tiles(player.x,player.y,player.atk_range)
+		moveable_tiles(unit.speed,unit.x,unit.y,unit)
+		atkable_tiles(unit.x,unit.y,unit.atk_range)
 	elseif state==2 or state==3 then
-		atkable_tiles(player.x,player.y,player.atk_range)
+		atkable_tiles(unit.x,unit.y,unit.atk_range)
 	end
 end
 
@@ -452,7 +455,7 @@ function save_state()
 	state_stack.top=state_stack.top+1
 end
 
-function load_state()
+function load_state(unit)
 	if state_stack.top==0 then
 		return
 	end
@@ -469,11 +472,10 @@ function load_state()
 	player.y=state_stack.y[state_stack.top]
 	table.remove(state_stack.y)
 	state_stack.top=state_stack.top-1
-	mapstate_set()
+	mapstate_set(unit)
 end
 
 function state_stack_clear()
-	print("ssc start")
 	mapstate_clear(moveable,1)
 	mapstate_clear(atkable,0)
 	state_stack.top=0
@@ -481,7 +483,6 @@ function state_stack_clear()
 	state_stack.x={}
 	state_stack.y={}
 	state=0
-	print("state : "..state)
 end
 
 function AI_stack_clear()
@@ -550,7 +551,7 @@ end
 
 function afterMovingCharacter(unit)
 	state=2
-	mapstate_set()
+	mapstate_set(unit)
 	if unit.type==2 then
 		if action=="atk" then
 			do_atk=coroutine.create(co_atk)
@@ -575,7 +576,7 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 			if player.x==x and player.y==y then
 				save_state()
 				state=1
-				mapstate_set()
+				mapstate_set(player)
 			end
 		elseif state==1 then
 			move_character(player,x,y)
@@ -596,11 +597,11 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 			--maybe add option menu later
 			--or display character infos like jojojeon
 		elseif state==1 then
-			load_state()
+			load_state(player)
 		elseif state==2 then
-			load_state()
+			load_state(player)
 		elseif state==3 then
-			load_state()
+			load_state(player)
 		end
 	end
 end
