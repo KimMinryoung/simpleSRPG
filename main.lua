@@ -1,3 +1,5 @@
+--testModule = require "test"
+
 function love.update(dt)
 	if dt < 1/30 then
 		love.timer.sleep(1/30 - dt)
@@ -30,6 +32,8 @@ function love.draw(dt)
 end
 
 function love.load(arg)
+	--testModule.print_rsp()
+
 	map_w=20
 	map_h=20
 	map_x=0
@@ -49,6 +53,8 @@ function love.load(arg)
 	turn=1
 
 	frame_count=0
+
+	selected_unit=nil
 
 	state=0--0:default 1:pressed a character 2:moved and preparing an action 3:attack 4:skill
 
@@ -454,7 +460,7 @@ function atk_click(x,y)
 		if unit~=nil and unit.type==2 then
 			SE_click:play()
 			do_atk=coroutine.create(co_atk)
-			coroutine.resume(do_atk,player,unit)
+			coroutine.resume(do_atk,selected_unit,unit)
 		end
 	end
 end
@@ -499,8 +505,8 @@ function save_state()
 	state_stack.top=state_stack.top+1
 	local top=state_stack.top
 	state_stack.states[top]=state
-	state_stack.x[top]=player.x
-	state_stack.y[top]=player.y
+	state_stack.x[top]=selected_unit.x
+	state_stack.y[top]=selected_unit.y
 	state_stack.moveable[top]=mapstate_copy_and_return(moveable)
 	state_stack.moveable_prev_x[top]=mapstate_copy_and_return(moveable_prev_x)
 	state_stack.moveable_prev_y[top]=mapstate_copy_and_return(moveable_prev_y)
@@ -512,9 +518,9 @@ function load_state()
 	state=state_stack.states[top]
 	print("load state "..state)
 	state_stack.states[top]=nil
-	player.x=state_stack.x[top]
+	selected_unit.x=state_stack.x[top]
 	state_stack.x[top]=nil
-	player.y=state_stack.y[top]
+	selected_unit.y=state_stack.y[top]
 	state_stack.y[top]=nil
 	mapstate_copy(moveable,state_stack.moveable[top])
 	state_stack.moveable[top]=nil
@@ -586,6 +592,7 @@ function simul_enemysDefense(unit,x,y)
 	AI_stack.aim_x[AI_stack.top]=x
 	AI_stack.aim_y[AI_stack.top]=y
 	AI_stack.reward[AI_stack.top]=0-math.abs(player.x-x)-math.abs(player.y-y)--must change...
+	--move cost to nearest agun
 end
 
 function simul_enemysActionAfterMove(unit)
@@ -627,31 +634,41 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 	if button == 1 then
 		if state==0 then
 			if clicked_unit~=nil and clicked_unit.type<=1 and clicked_unit.action_end==false then
+				selected_unit=clicked_unit
 				SE_click:play()
 				save_state()
 				state=1
-				mapstate_set(clicked_unit)
+				mapstate_set(selected_unit)
 			end
 		elseif state==1 then
-			move_character(player,x,y)
+			move_character(selected_unit,x,y)
 			atk_click(x,y)
-			action_buttons_click(player,pos_x,pos_y)
+			action_buttons_click(selected_unit,pos_x,pos_y)
 		elseif state==2 then
 			atk_click(x,y)
-			action_buttons_click(player,pos_x,pos_y)
+			action_buttons_click(selected_unit,pos_x,pos_y)
 		elseif state==3 then
 			atk_click(x,y)
 		end
 	elseif button == 2 then
 		if state==0 then
 			if clicked_unit~=nil then
+				state=-2
 				info_displaying_chara_num=clicked_unit.num
+				moveable_tiles(clicked_unit.speed,clicked_unit.x,clicked_unit.y,clicked_unit)
+				atkable_tiles(clicked_unit.x,clicked_unit.y,clicked_unit.atk_range)
 			end
 			--maybe add option menu later
 			--or display character infos like jojojeon
 		elseif state==1 or state==2 or state==3 then
 			SE_cancel:play()
 			load_state()
+		elseif state==-2 then
+			SE_cancel:play()
+			mapstate_clear(moveable,1)
+			mapstate_clear(atkable,0)
+			info_displaying_chara_num=0
+			state=0
 		end
 	end
 end
