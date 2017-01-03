@@ -40,7 +40,7 @@ function love.load(arg)
 	map_y=0
 	map_offset_x=10
 	map_offset_y=10
-	map_display_w=20
+	map_display_w=15
 	map_display_h=13
 	tile_w=35
 	tile_h=33
@@ -206,11 +206,12 @@ function love.load(arg)
    
 		return instance
 	end
-	player= Unit.new(1,"Player",100,6,1,1,40,30,atk_ranges[4],"player")
+	player= Unit.new(1,"Red Mage",100,6,1,1,40,30,atk_ranges[4],"player")
+	ally1= Unit.new(0,"Alchem",27,4,2,1,10,0,atk_ranges[2],"Alchem")
 
-	unit1 = Unit.new(2,"Jol1",60,5,7,10,70,10,atk_ranges[3],"jol")
-	unit2 = Unit.new(2,"Jol2",50,5,2,5,40,15,atk_ranges[1],"jol")
-	unit3 = Unit.new(2,"Jol3",20,5,20,5,40,0,atk_ranges[4],"jol")
+	unit1 = Unit.new(2,"Blue Mage",60,5,7,10,70,10,atk_ranges[3],"jol")
+	unit2 = Unit.new(2,"Matial",50,5,2,5,40,15,atk_ranges[1],"jol")
+	unit3 = Unit.new(2,"Archer",20,5,20,5,40,0,atk_ranges[4],"jol")
 
 	map={
 	   { 0, 0, 3, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}, 
@@ -319,33 +320,47 @@ function co_moving(unit,dest_x,dest_y)
 end
 
 function co_atk(attacking_unit,attacked_unit)
+	SE_get_atk:play()
 	print(attacking_unit.name.." is attacking "..attacked_unit.name)
 	atkable_tiles(attacking_unit.x,attacking_unit.y,attacking_unit.atk_range)
 	attacking_unit.defensing=0
 	info_displaying_chara_num=attacked_unit.num
 	coroutine.yield()
-	SE_get_atk:play()
 	coroutine.yield()
 	attacked_unit:get_attack(attacking_unit,true)
+	coroutine.yield()
 	mapstate_clear(atkable,0)
 
-	action_end_process()
+	action_end_process(attacking_unit)
 end
 
 function co_defense(unit)
 	coroutine.yield()
 	unit.defensing=1
 
-	action_end_process()
+	action_end_process(unit)
 end
 
-function action_end_process()
+function action_end_process(unit)
+	unit.action_end=true
+	selected_unit=nil
 	state_stack_clear()
 	if turn%2==1 then
-		pass_turn()
+		if check_all_acted() then
+			pass_turn()
+		end
 	elseif turn%2==0 then
 		AI_stack_clear()
 	end
+end
+
+function check_all_acted()
+	for k,unit in pairs(units) do
+		if unit.type<=1 and unit.action_end==false then
+			return false
+		end
+	end
+	return true
 end
 
 function enemyAI_choose_best(unit)
@@ -410,6 +425,9 @@ function map_point_to_real_point(x,y)
 end
 
 function pass_turn()
+	for k,unit in pairs(units) do
+		unit.action_end=false
+	end
 	turn=turn+1
 	if turn%2==0 then
 		enemyTurn()
@@ -524,7 +542,6 @@ end
 function load_state()
 	local top=state_stack.top
 	state=state_stack.states[top]
-	print("load state "..state)
 	state_stack.states[top]=nil
 	selected_unit.x=state_stack.x[top]
 	state_stack.x[top]=nil
@@ -572,7 +589,7 @@ function simul_enemysAtk(unit,x,y)
 		for aim_x=1, map_w do
 			if(atkable[aim_y][aim_x]==1) then
 				our_unit=find_unit_on_this_point(aim_x,aim_y)
-				if our_unit~=nil and our_unit.type==1 then
+				if our_unit~=nil and (our_unit.type==0 or our_unit.type==1) then
 					damage,died=our_unit:get_attack(unit,false)
 					AI_stack.top=AI_stack.top+1
 					AI_stack.actions[AI_stack.top]="atk"
@@ -630,10 +647,15 @@ function afterMovingCharacter(unit)
 	end
 end
 
-function love.mousepressed(pos_x, pos_y, button, istouch)
-	if turn%2==0 or (do_move ~= nil and coroutine.status(do_move)~="dead") or 
+function should_not_get_input()
+	return turn%2==0 or (do_move ~= nil and coroutine.status(do_move)~="dead") or 
 		(do_atk ~= nil and coroutine.status(do_atk)~="dead") or
-		(do_enemy_control ~= nil and coroutine.status(do_enemy_control)~="dead") then
+		(do_defense ~= nil and coroutine.status(do_defense)~="dead") or
+		(do_enemy_control ~= nil and coroutine.status(do_enemy_control)~="dead")
+end
+
+function love.mousepressed(pos_x, pos_y, button, istouch)
+	if should_not_get_input() then
 		print("ignore mouse click")
 		return
 	end
@@ -643,6 +665,7 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 		if state==0 then
 			if clicked_unit~=nil and clicked_unit.type<=1 and clicked_unit.action_end==false then
 				selected_unit=clicked_unit
+				info_displaying_chara_num=clicked_unit.num
 				SE_click:play()
 				save_state()
 				state=1
@@ -795,15 +818,26 @@ function display_chara_info()
 	if(info_displaying_chara_num==0) then
 		return
 	end
-	unit=units[info_displaying_chara_num]
+	local unit=units[info_displaying_chara_num]
 	if unit==nil then
 		return
 	end
-	pos_x,pos_y=map_point_to_real_point(unit.x,unit.y)
-	love.graphics.print(unit.nowHP.."/"..unit.maxHP,pos_x+20,pos_y-20)
+	if unit.type==0 or unit.type==1 then
+		love.graphics.print("playable character",600,300)
+	else
+		love.graphics.print("enemy",600,300)
+	end
+	love.graphics.print("name\t"..unit.name,600,330)
+	love.graphics.print("HP\t"..unit.nowHP.."/"..unit.maxHP,600,360)
+	love.graphics.print("mobility\t"..unit.speed,600,390)
+	love.graphics.print("attack\t"..unit.atk,600,420)
+	love.graphics.print("defense\t"..unit.dfs,600,450)
 end
 
 function display_main_info()
+	love.graphics.setNewFont(20)
+	love.graphics.print("Turn\t"..turn,600,100)
+	love.graphics.print("State\t"..state,600,130)
 	love.graphics.setNewFont(40)
 	if ending==2 then
 		love.graphics.print("Game Over...",250,500)
