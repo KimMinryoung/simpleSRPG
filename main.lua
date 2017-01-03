@@ -443,7 +443,6 @@ function action_buttons_click(unit,pos_x,pos_y)
 				--do nothing
 			elseif i==3 then
 				SE_click:play()
-				save_state()
 				do_defense=coroutine.create(co_defense)
 				coroutine.resume(do_defense,unit)
 			end
@@ -456,11 +455,20 @@ function atk_click(x,y)
 		if atkable[y][x]==0 then
 			return
 		end
-		unit=find_unit_on_this_point(x,y)
+		local unit=find_unit_on_this_point(x,y)
 		if unit~=nil and unit.type==2 then
 			SE_click:play()
 			do_atk=coroutine.create(co_atk)
 			coroutine.resume(do_atk,selected_unit,unit)
+		end
+	end
+end
+function defense_click(x,y)
+	if x>=1 and x<=map_w and y>=1 and y<=map_h then
+		if x==selected_unit.x and y==selected_unit.y then
+			SE_click:play()
+			do_defense=coroutine.create(co_defense)
+			coroutine.resume(do_defense,selected_unit)
 		end
 	end
 end
@@ -646,6 +654,7 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 			action_buttons_click(selected_unit,pos_x,pos_y)
 		elseif state==2 then
 			atk_click(x,y)
+			defense_click(x,y)
 			action_buttons_click(selected_unit,pos_x,pos_y)
 		elseif state==3 then
 			atk_click(x,y)
