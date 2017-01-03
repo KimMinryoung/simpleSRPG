@@ -5,7 +5,7 @@ function love.update(dt)
 		love.timer.sleep(1/30 - dt)
 		frame_count=frame_count+1
 	end
-	if frame_count%5==0 then
+	if frame_count%7==0 then
 		if do_move ~= nil and coroutine.status (do_move) ~= "dead" then
 			coroutine.resume (do_move)
 		elseif do_atk ~= nil and coroutine.status (do_atk) ~= "dead" then
@@ -26,7 +26,6 @@ function love.draw(dt)
 	display_moveable()
 	display_atkable()
 	display_buttons()
-	display_allHP()
 	display_chara_info()
 	display_main_info()
 end
@@ -706,17 +705,19 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 end
 
 function draw_map()
+	love.graphics.setNewFont(20)
 	for y=1, map_display_h do
 		for x=1, map_display_w do
 			pos_x,pos_y=map_point_to_real_point(x+map_x,y+map_y)
 			love.graphics.draw(tile[map[y+map_y][x+map_x]], pos_x, pos_y)
-			for k,unit in pairs(units) do
-				if y+map_y==unit.y and x+map_x==unit.x then
-					love.graphics.draw(unit.img, pos_x, pos_y)
-				end
+			local unit=find_unit_on_this_point(x+map_x,y+map_y)
+			if unit~=nil then
+				love.graphics.draw(unit.img, pos_x, pos_y)
+				love.graphics.print(unit.nowHP.."/"..unit.maxHP,pos_x+0,pos_y-20)
 			end
 		end
 	end
+	love.graphics.setNewFont(20)
 end
 
 	
@@ -804,13 +805,6 @@ function display_buttons()
 		for i=1, 3 do
 			love.graphics.draw(action_buttons[i].img,action_buttons[i].x, action_buttons[i].y)
 		end
-	end
-end
-
-function display_allHP()
-	for k,unit in pairs(units) do
-		pos_x,pos_y=map_point_to_real_point(unit.x,unit.y)
-		love.graphics.print(unit.nowHP.."/"..unit.maxHP,pos_x+20,pos_y-20)
 	end
 end
 
