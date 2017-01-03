@@ -75,8 +75,8 @@ function love.load(arg)
 
 	info_displaying_chara_num=0
 
-	atk_ranges={}
-	atk_ranges[1]={
+	ranges={}
+	ranges[1]={
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
@@ -87,7 +87,7 @@ function love.load(arg)
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0}
 	}
-	atk_ranges[2]={
+	ranges[2]={
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
@@ -98,7 +98,7 @@ function love.load(arg)
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0}
 	}
-	atk_ranges[3]={
+	ranges[3]={
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,1,0,0,0,0},
@@ -109,7 +109,7 @@ function love.load(arg)
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0}
 	}
-	atk_ranges[4]={
+	ranges[4]={
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,1,0,0,0,0},
 		{0,0,0,1,1,1,0,0,0},
@@ -120,7 +120,7 @@ function love.load(arg)
 		{0,0,0,0,1,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0}
 	}
-	atk_ranges[5]={
+	ranges[5]={
 		{0,0,0,0,1,0,0,0,0},
 		{0,0,0,1,0,1,0,0,0},
 		{0,0,1,0,0,0,1,0,0},
@@ -131,7 +131,7 @@ function love.load(arg)
 		{0,0,0,1,0,1,0,0,0},
 		{0,0,0,0,1,0,0,0,0}
 	}
-	atk_ranges[6]={
+	ranges[6]={
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
@@ -161,7 +161,7 @@ function love.load(arg)
 		instance.atk=atk
 		instance.dfs=dfs
 		instance.atk_range=atk_range
-		instance.img=love.graphics.newImage(img..".png")
+		instance.img=img
 
 		instance.action_end=false
 		instance.defensing=0--0:not defensing 1:defensing 2:super defensing?(skill)
@@ -183,17 +183,13 @@ function love.load(arg)
 			return false--didn't die
 		end
 
-		instance.print_info = function(self)
-			print("name : " .. self.name , "HP : " .. self.nowHP.."/"..self.maxHP)  
-		end
-
 		instance.get_attack = function(self,other_unit,real)
 			if self.defensing==0 then
 				damage=math.floor(other_unit.atk-self.dfs)
 			elseif self.defensing==1 then
-				damage=math.floor((other_unit.atk-self.dfs)*0.6)
+				damage=math.floor((other_unit.atk-self.dfs)*0.75)
 			elseif self.defensing==2 then
-				damage=math.floor((other_unit.atk-self.dfs)*0.25)
+				damage=math.floor((other_unit.atk-self.dfs)*0.5)
 			end
 			damage=math.max(1,damage)
 			died=self:setHP(self.nowHP-damage,real)
@@ -202,12 +198,16 @@ function love.load(arg)
    
 		return instance
 	end
-	player= Unit.new(1,"Red Mage",100,6,1,1,40,30,atk_ranges[4],"player")
-	ally1= Unit.new(0,"Alchem",42,4,2,1,22,25,atk_ranges[2],"Alchem")
 
-	unit1 = Unit.new(2,"Blue Mage",60,5,7,10,70,10,atk_ranges[3],"jol")
-	unit2 = Unit.new(2,"Matial",50,5,2,5,40,15,atk_ranges[1],"jol")
-	unit3 = Unit.new(2,"Archer",20,5,20,5,40,0,atk_ranges[4],"jol")
+	player_img=love.graphics.newImage("player.png")
+	Alchem_img=love.graphics.newImage("Alchem.png")
+	jol_img=love.graphics.newImage("jol.png")
+	player= Unit.new(1,"Red Mage",100,6,1,1,40,30,ranges[4],player_img)
+	ally1= Unit.new(0,"Alchem",42,4,2,1,22,25,ranges[2],Alchem_img)
+
+	unit1 = Unit.new(2,"Blue Mage",60,5,7,10,70,10,ranges[3],jol_img)
+	unit2 = Unit.new(2,"Matial",50,5,2,5,40,15,ranges[1],jol_img)
+	unit3 = Unit.new(2,"Archer",20,5,20,5,40,0,ranges[4],jol_img)
 
 	map={
 	   { 0, 0, 3, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}, 
@@ -585,7 +585,7 @@ function simul_enemysAtk(unit,x,y)
 		for aim_x=1, map_w do
 			if(atkable[aim_y][aim_x]==1) then
 				our_unit=find_unit_on_this_point(aim_x,aim_y)
-				if our_unit~=nil and (our_unit.type==0 or our_unit.type==1) then
+				if our_unit~=nil and our_unit.type<=1 then
 					damage,died=our_unit:get_attack(unit,false)
 					AI_stack.top=AI_stack.top+1
 					AI_stack.actions[AI_stack.top]="atk"
@@ -714,18 +714,17 @@ function draw_map()
 			end
 		end
 	end
-	love.graphics.setNewFont(20)
 end
 
 function is_same_team(type1,type2)
-	if type1==0 or type1==1 then
-		if type2==0 or type2==1 then
+	if type1<=1 then
+		if type2<=1 then
 			return true
 		else
 			return false
 		end
 	else
-		if type2==0 or type2==1 then
+		if type2<=1 then
 			return false
 		else
 			return true
@@ -733,7 +732,7 @@ function is_same_team(type1,type2)
 	end
 end
 
-	
+
 function moveable_tiles(remainStep,x,y,unit,prev_x,prev_y)
 	if remainStep<0 then
 		return
@@ -831,7 +830,7 @@ function display_chara_info()
 	if unit==nil then
 		return
 	end
-	if unit.type==0 or unit.type==1 then
+	if unit.type<=1 then
 		love.graphics.print("playable character",600,300)
 	else
 		love.graphics.print("enemy",600,300)
