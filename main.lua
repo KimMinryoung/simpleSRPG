@@ -165,6 +165,12 @@ function love.load(arg)
 
 		instance.action_end=false
 		instance.defensing=0--0:not defensing 1:defensing 2:super defensing?(skill)
+
+		instance.skills={}
+
+		instance.addSkill=function(self,skillnum)
+			table.insert(self.skills,skillnum)
+		end
    
 		instance.setHP = function(self, hp,real)
 			if real then
@@ -203,7 +209,8 @@ function love.load(arg)
 	Alchem_img=love.graphics.newImage("Alchem.png")
 	jol_img=love.graphics.newImage("jol.png")
 	player= Unit.new(1,"Red Mage",100,6,1,1,40,30,ranges[4],player_img)
-	ally1= Unit.new(0,"Alchem",42,4,2,1,22,25,ranges[2],Alchem_img)
+	alchem= Unit.new(0,"Alchem",42,4,2,1,22,25,ranges[2],Alchem_img)
+	alchem:addSkill(1)
 
 	unit1 = Unit.new(2,"Blue Mage",60,5,7,10,70,10,ranges[3],jol_img)
 	unit2 = Unit.new(2,"Matial",50,5,2,5,40,15,ranges[1],jol_img)
@@ -436,11 +443,32 @@ function enemyTurn()
 end
 
 function move_character(unit,x,y)
-	if x>=1 and x<=map_w and y>=1 and y<=map_h then
+	if in_displayed_map(x,y) then
 		if moveable[y][x]<=0 then
 			SE_click:play()
 			save_state()
 			doMove(unit,x,y)
+		end
+	end
+end
+
+function skill_buttons_click(unit,pos_x,pos_y)
+	local i=0
+	for k,skill in pairs(unit.skills) do
+		i=i+1
+		if between(pos_x,skill_buttons[i].x,skill_buttons[i].x+skill_buttons[i].width) and between(pos_y,action_buttons[i].y,action_buttons[i].y+action_buttons[i].height) then
+			if i==1 then
+				SE_click:play()
+				save_state()
+				state=3
+				mapstate_set(unit)
+			elseif i==2 then
+				--do nothing
+			elseif i==3 then
+				SE_click:play()
+				do_defense=coroutine.create(co_defense)
+				coroutine.resume(do_defense,unit)
+			end
 		end
 	end
 end
@@ -464,8 +492,12 @@ function action_buttons_click(unit,pos_x,pos_y)
 	end
 end
 
+function in_displayed_map(x,y)
+	return between(x,1+map_x,map_display_w+map_x) and between(y,1+map_y,map_display_h+map_y)
+end
+
 function atk_click(x,y)
-	if x>=1 and x<=map_w and y>=1 and y<=map_h then
+	if in_displayed_map(x,y) then
 		if atkable[y][x]==0 then
 			return
 		end
@@ -478,7 +510,7 @@ function atk_click(x,y)
 	end
 end
 function defense_click(x,y)
-	if x>=1 and x<=map_w and y>=1 and y<=map_h then
+	if in_displayed_map(x,y) then
 		if x==selected_unit.x and y==selected_unit.y then
 			SE_click:play()
 			do_defense=coroutine.create(co_defense)
@@ -656,7 +688,10 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 		return
 	end
 	local x,y=real_point_to_map_point(pos_x,pos_y)
-	local clicked_unit=find_unit_on_this_point(x,y)
+	local clicked_unit=nil
+	if in_displayed_map(x,y) then
+		clicked_unit=find_unit_on_this_point(x,y)
+	end
 	if button == 1 then
 		if state==0 then
 			if clicked_unit~=nil and clicked_unit.type<=1 and clicked_unit.action_end==false then
@@ -844,8 +879,8 @@ end
 
 function display_main_info()
 	love.graphics.setNewFont(20)
-	love.graphics.print("Turn\t"..turn,600,100)
-	love.graphics.print("State\t"..state,600,130)
+	love.graphics.print("Turn\t"..math.floor((turn+1)/2),600,20)
+	love.graphics.print("State\t"..state,600,50)
 	love.graphics.setNewFont(40)
 	if ending==2 then
 		love.graphics.print("Game Over...",250,500)
