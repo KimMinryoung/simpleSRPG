@@ -44,9 +44,6 @@ function love.load(arg)
 	tile_w=35
 	tile_h=33
 
-	temp_x=0
-	temp_y=0
-
 	ending=0
 
 	turn=1
@@ -206,7 +203,7 @@ function love.load(arg)
 		return instance
 	end
 	player= Unit.new(1,"Red Mage",100,6,1,1,40,30,atk_ranges[4],"player")
-	ally1= Unit.new(0,"Alchem",27,4,2,1,10,0,atk_ranges[2],"Alchem")
+	ally1= Unit.new(0,"Alchem",42,4,2,1,22,25,atk_ranges[2],"Alchem")
 
 	unit1 = Unit.new(2,"Blue Mage",60,5,7,10,70,10,atk_ranges[3],"jol")
 	unit2 = Unit.new(2,"Matial",50,5,2,5,40,15,atk_ranges[1],"jol")
@@ -217,7 +214,7 @@ function love.load(arg)
 	   { 0, 0, 3, 0, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0},
 	   { 0, 0, 3, 0, 2, 2, 2, 0, 3, 3, 3, 3, 1, 0, 0, 0, 0, 0, 0, 0},
 	   { 3, 0, 3, 0, 2, 2, 2, 0, 3, 3, 0, 3, 1, 1, 3, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 3, 3, 0, 0, 0, 3, 3, 0, 3, 1, 0, 3, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 3, 3, 0, 0, 0, 3, 3, 0, 0, 1, 0, 3, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 1, 3, 3, 3, 3, 3, 3, 0, 3, 1, 1, 3, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 1, 3, 3, 3, 3, 3, 3, 0, 3, 3, 3, 3, 0, 0, 0, 0, 0},
 	   { 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -720,40 +717,58 @@ function draw_map()
 	love.graphics.setNewFont(20)
 end
 
+function is_same_team(type1,type2)
+	if type1==0 or type1==1 then
+		if type2==0 or type2==1 then
+			return true
+		else
+			return false
+		end
+	else
+		if type2==0 or type2==1 then
+			return false
+		else
+			return true
+		end
+	end
+end
+
 	
-function moveable_tiles(remainStep,x,y,unit)
-	local unit_on_this_point=find_unit_on_this_point(x,y)
-	if remainStep<0 or (unit_on_this_point~=nil and unit_on_this_point~=unit) then
+function moveable_tiles(remainStep,x,y,unit,prev_x,prev_y)
+	if remainStep<0 then
 		return
 	end
 	if moveable[y][x]<=-remainStep then
 		return
 	end
+	local unit_on_this_point=find_unit_on_this_point(x,y)
+	if unit_on_this_point~=nil and unit_on_this_point~=unit then
+		if is_same_team(unit.type,unit_on_this_point.type)==false then
+			return
+		end
+	end
 	moveable[y][x]=-remainStep
-	moveable_prev_x[y][x]=temp_x
-	moveable_prev_y[y][x]=temp_y
-	temp_x=x
-	temp_y=y
+	moveable_prev_x[y][x]=prev_x
+	moveable_prev_y[y][x]=prev_y
 	if x-1>=1 then
-		moveable_tiles(remainStep-(cost[map[y][x-1]+1]),x-1,y,unit)
+		moveable_tiles(remainStep-(cost[map[y][x-1]+1]),x-1,y,unit,x,y)
 	end
-	temp_x=x
-	temp_y=y
 	if x+1<=map_w then
-		moveable_tiles(remainStep-(cost[map[y][x+1]+1]),x+1,y,unit)
+		moveable_tiles(remainStep-(cost[map[y][x+1]+1]),x+1,y,unit,x,y)
 	end
-	temp_x=x
-	temp_y=y
 	if y-1>=1 then
-		moveable_tiles(remainStep-(cost[map[y-1][x]+1]),x,y-1,unit)
+		moveable_tiles(remainStep-(cost[map[y-1][x]+1]),x,y-1,unit,x,y)
 	end
-	temp_x=x
-	temp_y=y
 	if y+1<=map_h then
-		moveable_tiles(remainStep-(cost[map[y+1][x]+1]),x,y+1,unit)
+		moveable_tiles(remainStep-(cost[map[y+1][x]+1]),x,y+1,unit,x,y)
 	end
-	temp_x=0
-	temp_y=0
+
+	--if there is an ally unit, I can pass the point but can't arrive at the point
+	if unit_on_this_point~=nil and unit_on_this_point~=unit then
+		if is_same_team(unit.type,unit_on_this_point.type)==true then
+			moveable[y][x]=1
+		end
+	end
 end
 
 function find_unit_on_this_point(x,y)
