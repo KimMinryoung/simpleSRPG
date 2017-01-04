@@ -146,7 +146,7 @@ function love.load(arg)
 	units_number=0
 	Unit = {}
 	--unit type : 1 - agun, if die game over 0 - agun, even if it dies not game over 2 - enemy
-	Unit.new = function(type,name, HP,speed,x,y,atk,dfs,atk_range,img)
+	Unit.new = function(type,name, HP,MP,speed,x,y,atk,dfs,atk_range,img)
 		units_number=units_number+1
 		local instance = {}
 		instance.type=type
@@ -155,6 +155,8 @@ function love.load(arg)
 		instance.name = name
 		instance.maxHP = HP
 		instance.nowHP = HP
+		instance.maxMP = MP
+		instance.nowMP = MP
 		instance.speed=speed
 		instance.x=x
 		instance.y=y
@@ -168,8 +170,8 @@ function love.load(arg)
 
 		instance.skills={}
 
-		instance.addSkill=function(self,skillnum)
-			table.insert(self.skills,skillnum)
+		instance.addSkill=function(self,skillID)
+			table.insert(self.skills,skillID)
 		end
    
 		instance.setHP = function(self, hp,real)
@@ -208,13 +210,33 @@ function love.load(arg)
 	player_img=love.graphics.newImage("player.png")
 	Alchem_img=love.graphics.newImage("Alchem.png")
 	jol_img=love.graphics.newImage("jol.png")
-	player= Unit.new(1,"Red Mage",100,6,1,1,40,30,ranges[4],player_img)
-	alchem= Unit.new(0,"Alchem",42,4,2,1,22,25,ranges[2],Alchem_img)
+	player= Unit.new(1,"Red Mage",100,40,6,1,1,40,30,ranges[4],player_img)
+	alchem= Unit.new(0,"Alchem",42,98,4,2,1,22,25,ranges[2],Alchem_img)
 	alchem:addSkill(1)
 
-	unit1 = Unit.new(2,"Blue Mage",60,5,7,10,70,10,ranges[3],jol_img)
-	unit2 = Unit.new(2,"Matial",50,5,2,5,40,15,ranges[1],jol_img)
-	unit3 = Unit.new(2,"Archer",20,5,20,5,40,0,ranges[4],jol_img)
+	unit1 = Unit.new(2,"Blue Mage",60,30,5,7,10,70,10,ranges[3],jol_img)
+	unit2 = Unit.new(2,"Matial",50,1,5,2,5,40,15,ranges[1],jol_img)
+	unit3 = Unit.new(2,"Archer",20,1,5,20,5,40,0,ranges[4],jol_img)
+
+	skills={}
+	skills_number=0
+	Skill = {}
+	Skill.new = function(ID,name,target_type,MPcost,power_calcul_method,power,target_range)
+		skills_number=skills_number+1
+		local instance = {}
+		instance.ID=ID
+		skills[instance.ID]=instance
+		instance.name = name
+		instance.target_type=target_type--true : target is the same team false : other team
+		instance.MPcost = MPcost
+		instance.power_calcul_method=power_calcul_method
+		instance.power=power
+		instance.target_range = target_range
+   
+		return instance
+	end
+
+	heal=Skill.new(1,"Heal",true,10,1,0.5,ranges[2])
 
 	map={
 	   { 0, 0, 3, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}, 
@@ -270,6 +292,7 @@ function love.load(arg)
 
 	SE_click=love.audio.newSource("SE_click.wav","static")
 	SE_cancel=love.audio.newSource("SE_cancel.wav","static")
+	SE_cantclick=love.audio.newSource("SE_cantclick.wav","static")
 	SE_get_atk=love.audio.newSource("SE_get_atk.wav","static")
 	SE_walk=love.audio.newSource("SE_walk.wav","static")
 	SE_retreat=love.audio.newSource("SE_retreat.wav","static")
@@ -452,23 +475,30 @@ function move_character(unit,x,y)
 	end
 end
 
+function doSkill(doing_unit,target_unit,skillnum)
+	local skill=doing_unit.skillnum
+	do_skill=coroutine.create(co_skill)
+	coroutine.resume(do_skill,doing_unit,target_unit)
+end
+
 function skill_buttons_click(unit,pos_x,pos_y)
 	local i=0
-	for k,skill in pairs(unit.skills) do
+	print(pos_x.." "..pos_y)
+	for k,skillID in pairs(unit.skills) do
 		i=i+1
-		if between(pos_x,skill_buttons[i].x,skill_buttons[i].x+skill_buttons[i].width) and between(pos_y,action_buttons[i].y,action_buttons[i].y+action_buttons[i].height) then
-			if i==1 then
+		if between(pos_x,600,700) and between(pos_y,30*i+60,30*i+90) then
+			local skill=skills[skillID]
+			print(skillID)
+			if unit.nowMP>=skill.MPcost then
 				SE_click:play()
 				save_state()
-				state=3
-				mapstate_set(unit)
-			elseif i==2 then
-				--do nothing
-			elseif i==3 then
-				SE_click:play()
-				do_defense=coroutine.create(co_defense)
-				coroutine.resume(do_defense,unit)
+				state=5
+				selected_skill=skill
+				atkable_tiles(unit.x,unit.x,skill.target_range)
+			else
+				SE_cantclick:play()
 			end
+			break
 		end
 	end
 end
@@ -482,7 +512,9 @@ function action_buttons_click(unit,pos_x,pos_y)
 				state=3
 				mapstate_set(unit)
 			elseif i==2 then
-				--do nothing
+				SE_click:play()
+				save_state()
+				state=4
 			elseif i==3 then
 				SE_click:play()
 				do_defense=coroutine.create(co_defense)
@@ -496,6 +528,18 @@ function in_displayed_map(x,y)
 	return between(x,1+map_x,map_display_w+map_x) and between(y,1+map_y,map_display_h+map_y)
 end
 
+function skill_target_click(x,y,skill)
+	if in_displayed_map(x,y) then
+		if atkable[y][x]==0 then
+			return
+		end
+		local unit=find_unit_on_this_point(x,y)
+		if unit~=nil and is_same_team(selected_unit.type,unit.type)==skill.target_type then
+			SE_click:play()
+			doSkill(selected_unit,unit,skill)
+		end
+	end
+end
 function atk_click(x,y)
 	if in_displayed_map(x,y) then
 		if atkable[y][x]==0 then
@@ -712,6 +756,10 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 			action_buttons_click(selected_unit,pos_x,pos_y)
 		elseif state==3 then
 			atk_click(x,y)
+		elseif state==4 then
+			skill_buttons_click(selected_unit,pos_x,pos_y)
+		elseif state==5 then
+			skill_target_click(x,y,selected_skill)
 		end
 	elseif button == 2 then
 		if state==0 then
@@ -723,7 +771,7 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 			end
 			--maybe add option menu later
 			--or display character infos like jojojeon
-		elseif state==1 or state==2 or state==3 then
+		elseif state==1 or state==2 or state==3 or state==4 or state==5 then
 			SE_cancel:play()
 			load_state()
 		elseif state==-2 then
@@ -853,6 +901,13 @@ function display_buttons()
 	if state==1 or state==2 then
 		for i=1, 3 do
 			love.graphics.draw(action_buttons[i].img,action_buttons[i].x, action_buttons[i].y)
+		end
+	end
+	if state==4 then
+		local i=0
+		for k,skill in pairs(selected_unit.skills) do
+			i=i+1
+			love.graphics.draw(atkable_layer,600,30*i+60)
 		end
 	end
 end
