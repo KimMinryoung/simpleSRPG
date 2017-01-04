@@ -78,6 +78,17 @@ function love.load(arg)
 	info_displaying_chara_num=0
 
 	ranges={}
+	ranges[0]={
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0}
+	}
 	ranges[1]={
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
@@ -133,13 +144,13 @@ function love.load(arg)
 		{0,0,0,1,0,1,0,0,0},
 		{0,0,0,0,1,0,0,0,0}
 	}
-	ranges[6]={
+	ranges[7]={
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
-		{0,0,0,0,0,0,0,0,0},
-		{0,0,0,0,0,0,0,0,0},
-		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,1,1,1,0,0,0},
+		{0,0,0,1,1,1,0,0,0},
+		{0,0,0,1,1,1,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0}
@@ -194,6 +205,10 @@ function love.load(arg)
 			return false--didn't die
 		end
 
+		instance.setMP = function(self, mp)
+			self.nowMP = math.max(0,math.min(mp,self.maxMP))
+		end
+
 		instance.get_attack = function(self,other_unit,real)
 			if self.defensing==0 then
 				damage=math.floor(other_unit.atk-self.dfs)
@@ -233,7 +248,7 @@ function love.load(arg)
 	skills={}
 	skills_number=0
 	Skill = {}
-	Skill.new = function(ID,name,target_type,MPcost,power_calcul_method,power,target_range)
+	Skill.new = function(ID,name,target_type,MPcost,effect_type,power,target_range)
 		skills_number=skills_number+1
 		local instance = {}
 		instance.ID=ID
@@ -241,14 +256,14 @@ function love.load(arg)
 		instance.name = name
 		instance.target_type=target_type--true : target is the same team false : other team
 		instance.MPcost = MPcost
-		instance.power_calcul_method=power_calcul_method
+		instance.effect_type=effect_type
 		instance.power=power
 		instance.target_range = target_range
    
 		return instance
 	end
 
-	heal=Skill.new(1,"Heal",true,10,1,0.5,ranges[2])
+	heal=Skill.new(1,"Heal",true,10,1,0.5,ranges[7])
 
 	map={
 	   { 0, 0, 3, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}, 
@@ -383,6 +398,7 @@ function co_skill(casting_unit,target_unit,skill)
 	coroutine.yield()
 	coroutine.yield()
 	target_unit:get_casted(casting_unit,skill,true)
+	casting_unit:setMP(casting_unit.nowMP-skill.MPcost)
 	coroutine.yield()
 	mapstate_clear(atkable,0)
 	casting_unit.defensing=0
@@ -965,9 +981,10 @@ function display_chara_info()
 	end
 	love.graphics.print("name\t"..unit.name,600,330)
 	love.graphics.print("HP\t"..unit.nowHP.."/"..unit.maxHP,600,360)
-	love.graphics.print("mobility\t"..unit.speed,600,390)
-	love.graphics.print("attack\t"..unit.atk,600,420)
-	love.graphics.print("defense\t"..unit.dfs,600,450)
+	love.graphics.print("MP\t"..unit.nowMP.."/"..unit.maxMP,600,390)
+	love.graphics.print("mobility\t"..unit.speed,600,420)
+	love.graphics.print("attack\t"..unit.atk,600,450)
+	love.graphics.print("defense\t"..unit.dfs,600,480)
 end
 
 function display_main_info()
@@ -985,7 +1002,7 @@ end
 
 function skill_power_calculate(skill,casting_unit,target_unit)
 	local power=0
-	if skill.power_calcul_method==1 then
+	if skill.effect_type==1 then
 		power=math.floor(casting_unit.mag*skill.power)
 	end
 	return power
