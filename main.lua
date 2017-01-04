@@ -10,6 +10,8 @@ function love.update(dt)
 			coroutine.resume (do_move)
 		elseif do_atk ~= nil and coroutine.status (do_atk) ~= "dead" then
 			coroutine.resume (do_atk)
+		elseif do_skill ~= nil and coroutine.status (do_skill) ~= "dead" then
+			coroutine.resume (do_skill)
 		elseif do_defense ~= nil and coroutine.status (do_defense) ~= "dead" then
 			coroutine.resume (do_defense)
 		elseif do_enemy_control ~= nil and coroutine.status (do_enemy_control) ~= "dead" then
@@ -146,7 +148,7 @@ function love.load(arg)
 	units_number=0
 	Unit = {}
 	--unit type : 1 - agun, if die game over 0 - agun, even if it dies not game over 2 - enemy
-	Unit.new = function(type,name, HP,MP,speed,x,y,atk,dfs,atk_range,img)
+	Unit.new = function(type,name, HP,MP,speed,x,y,atk,dfs,mag,atk_range,img)
 		units_number=units_number+1
 		local instance = {}
 		instance.type=type
@@ -162,6 +164,7 @@ function love.load(arg)
 		instance.y=y
 		instance.atk=atk
 		instance.dfs=dfs
+		instance.mag=mag
 		instance.atk_range=atk_range
 		instance.img=img
 
@@ -203,20 +206,29 @@ function love.load(arg)
 			died=self:setHP(self.nowHP-damage,real)
 			return damage,died
 		end
-   
+
+		instance.get_casted = function(self,casting_unit,skill,real)
+			local power=0
+			power=skill_power_calculate(skill,casting_unit,self)
+			print(power)
+			if skill.ID==1 then
+				self:setHP(self.nowHP+power,real)
+			end
+		end
+
 		return instance
 	end
 
 	player_img=love.graphics.newImage("player.png")
 	Alchem_img=love.graphics.newImage("Alchem.png")
 	jol_img=love.graphics.newImage("jol.png")
-	player= Unit.new(1,"Red Mage",100,40,6,1,1,40,30,ranges[4],player_img)
-	alchem= Unit.new(0,"Alchem",42,98,4,2,1,22,25,ranges[2],Alchem_img)
+	player= Unit.new(1,"Red Mage",100,40,6,1,1,40,30,30,ranges[4],player_img)
+	alchem= Unit.new(0,"Alchem",42,98,4,2,1,22,25,43,ranges[2],Alchem_img)
 	alchem:addSkill(1)
 
-	unit1 = Unit.new(2,"Blue Mage",60,30,5,7,10,70,10,ranges[3],jol_img)
-	unit2 = Unit.new(2,"Matial",50,1,5,2,5,40,15,ranges[1],jol_img)
-	unit3 = Unit.new(2,"Archer",20,1,5,20,5,40,0,ranges[4],jol_img)
+	unit1 = Unit.new(2,"Blue Mage",60,30,5,7,10,70,10,30,ranges[3],jol_img)
+	unit2 = Unit.new(2,"Matial",50,1,5,2,5,40,15,1,ranges[1],jol_img)
+	unit3 = Unit.new(2,"Archer",20,1,5,20,5,40,0,1,ranges[4],jol_img)
 
 	skills={}
 	skills_number=0
@@ -294,6 +306,7 @@ function love.load(arg)
 	SE_cancel=love.audio.newSource("SE_cancel.wav","static")
 	SE_cantclick=love.audio.newSource("SE_cantclick.wav","static")
 	SE_get_atk=love.audio.newSource("SE_get_atk.wav","static")
+	SE_heal=love.audio.newSource("SE_heal.wav","static")
 	SE_walk=love.audio.newSource("SE_walk.wav","static")
 	SE_retreat=love.audio.newSource("SE_retreat.wav","static")
 
@@ -349,15 +362,31 @@ function co_atk(attacking_unit,attacked_unit)
 	SE_get_atk:play()
 	print(attacking_unit.name.." is attacking "..attacked_unit.name)
 	atkable_tiles(attacking_unit.x,attacking_unit.y,attacking_unit.atk_range)
-	attacking_unit.defensing=0
 	info_displaying_chara_num=attacked_unit.num
 	coroutine.yield()
 	coroutine.yield()
 	attacked_unit:get_attack(attacking_unit,true)
 	coroutine.yield()
 	mapstate_clear(atkable,0)
+	attacking_unit.defensing=0
 
 	action_end_process(attacking_unit)
+end
+
+function co_skill(casting_unit,target_unit,skill)
+	if skill.ID==1 then
+		SE_heal:play()
+	end
+	atkable_tiles(casting_unit.x,casting_unit.y,skill.target_range)
+	info_displaying_chara_num=target_unit.num
+	coroutine.yield()
+	coroutine.yield()
+	target_unit:get_casted(casting_unit,skill,true)
+	coroutine.yield()
+	mapstate_clear(atkable,0)
+	casting_unit.defensing=0
+
+	action_end_process(casting_unit)
 end
 
 function co_defense(unit)
@@ -370,6 +399,7 @@ end
 function action_end_process(unit)
 	unit.action_end=true
 	selected_unit=nil
+	selected_skill=nil
 	state_stack_clear()
 	if turn%2==1 then
 		if check_all_acted() then
@@ -475,10 +505,9 @@ function move_character(unit,x,y)
 	end
 end
 
-function doSkill(doing_unit,target_unit,skillnum)
-	local skill=doing_unit.skillnum
+function doSkill(doing_unit,target_unit,skill)
 	do_skill=coroutine.create(co_skill)
-	coroutine.resume(do_skill,doing_unit,target_unit)
+	coroutine.resume(do_skill,doing_unit,target_unit,skill)
 end
 
 function skill_buttons_click(unit,pos_x,pos_y)
@@ -488,13 +517,12 @@ function skill_buttons_click(unit,pos_x,pos_y)
 		i=i+1
 		if between(pos_x,600,700) and between(pos_y,30*i+60,30*i+90) then
 			local skill=skills[skillID]
-			print(skillID)
 			if unit.nowMP>=skill.MPcost then
 				SE_click:play()
 				save_state()
 				state=5
 				selected_skill=skill
-				atkable_tiles(unit.x,unit.x,skill.target_range)
+				atkable_tiles(unit.x,unit.y,skill.target_range)
 			else
 				SE_cantclick:play()
 			end
@@ -534,9 +562,11 @@ function skill_target_click(x,y,skill)
 			return
 		end
 		local unit=find_unit_on_this_point(x,y)
-		if unit~=nil and is_same_team(selected_unit.type,unit.type)==skill.target_type then
+		if unit~=nil and is_same_team(selected_unit,unit)==skill.target_type then
 			SE_click:play()
 			doSkill(selected_unit,unit,skill)
+		else
+			SE_cantclick:play()
 		end
 	end
 end
@@ -546,10 +576,12 @@ function atk_click(x,y)
 			return
 		end
 		local unit=find_unit_on_this_point(x,y)
-		if unit~=nil and unit.type==2 then
+		if unit~=nil and is_same_team(selected_unit,unit)==false then
 			SE_click:play()
 			do_atk=coroutine.create(co_atk)
 			coroutine.resume(do_atk,selected_unit,unit)
+		else
+			SE_cantclick:play()
 		end
 	end
 end
@@ -722,6 +754,7 @@ end
 function should_not_get_input()
 	return turn%2==0 or (do_move ~= nil and coroutine.status(do_move)~="dead") or 
 		(do_atk ~= nil and coroutine.status(do_atk)~="dead") or
+		(do_skill ~= nil and coroutine.status(do_skill)~="dead") or
 		(do_defense ~= nil and coroutine.status(do_defense)~="dead") or
 		(do_enemy_control ~= nil and coroutine.status(do_enemy_control)~="dead")
 end
@@ -799,15 +832,15 @@ function draw_map()
 	end
 end
 
-function is_same_team(type1,type2)
-	if type1<=1 then
-		if type2<=1 then
+function is_same_team(unit1,unit2)
+	if unit1.type<=1 then
+		if unit2.type<=1 then
 			return true
 		else
 			return false
 		end
 	else
-		if type2<=1 then
+		if unit2.type<=1 then
 			return false
 		else
 			return true
@@ -825,7 +858,7 @@ function moveable_tiles(remainStep,x,y,unit,prev_x,prev_y)
 	end
 	local unit_on_this_point=find_unit_on_this_point(x,y)
 	if unit_on_this_point~=nil and unit_on_this_point~=unit then
-		if is_same_team(unit.type,unit_on_this_point.type)==false then
+		if is_same_team(unit,unit_on_this_point)==false then
 			return
 		end
 	end
@@ -847,7 +880,7 @@ function moveable_tiles(remainStep,x,y,unit,prev_x,prev_y)
 
 	--if there is an ally unit, I can pass the point but can't arrive at the point
 	if unit_on_this_point~=nil and unit_on_this_point~=unit then
-		if is_same_team(unit.type,unit_on_this_point.type)==true then
+		if is_same_team(unit,unit_on_this_point)==true then
 			moveable[y][x]=1
 		end
 	end
@@ -943,6 +976,14 @@ function display_main_info()
 		love.graphics.print("Mission Success!",250,500)
 	end
 	love.graphics.setNewFont(20)
+end
+
+function skill_power_calculate(skill,casting_unit,target_unit)
+	local power=0
+	if skill.power_calcul_method==1 then
+		power=math.floor(casting_unit.mag*skill.power)
+	end
+	return power
 end
 
 function between(x,min,max)
