@@ -299,6 +299,7 @@ function love.load(arg)
 	button_dfs.width=67
 	button_dfs.height=67
 	action_buttons={button_atk,button_skill,button_dfs}
+	skill_button=love.graphics.newImage("skill_button.png")
 
 	-- sound effects
 
@@ -515,7 +516,7 @@ function skill_buttons_click(unit,pos_x,pos_y)
 	print(pos_x.." "..pos_y)
 	for k,skillID in pairs(unit.skills) do
 		i=i+1
-		if between(pos_x,600,700) and between(pos_y,30*i+60,30*i+90) then
+		if between(pos_x,600,725) and between(pos_y,30*i+60,30*i+90) then
 			local skill=skills[skillID]
 			if unit.nowMP>=skill.MPcost then
 				SE_click:play()
@@ -938,9 +939,13 @@ function display_buttons()
 	end
 	if state==4 then
 		local i=0
-		for k,skill in pairs(selected_unit.skills) do
+		for k,skillID in pairs(selected_unit.skills) do
 			i=i+1
-			love.graphics.draw(atkable_layer,600,30*i+60)
+			local skill=skills[skillID]
+			love.graphics.draw(skill_button,600,30*i+60)
+    			love.graphics.setColor(0,0,0,255)
+			love.graphics.print(skill.name,600+5,30*i+60+5)
+    			love.graphics.setColor(255,255,255,255)
 		end
 	end
 end
