@@ -225,7 +225,6 @@ function love.load(arg)
 		instance.get_casted = function(self,casting_unit,skill,real)
 			local power=0
 			power=skill_power_calculate(skill,casting_unit,self)
-			print(power)
 			if skill.ID==1 then
 				self:setHP(self.nowHP+power,real)
 			end
@@ -376,7 +375,6 @@ end
 
 function co_atk(attacking_unit,attacked_unit)
 	SE_get_atk:play()
-	print(attacking_unit.name.." is attacking "..attacked_unit.name)
 	atkable_tiles(attacking_unit.x,attacking_unit.y,attacking_unit.atk_range)
 	info_displaying_chara_num=attacked_unit.num
 	coroutine.yield()
@@ -529,7 +527,6 @@ end
 
 function skill_buttons_click(unit,pos_x,pos_y)
 	local i=0
-	print(pos_x.." "..pos_y)
 	for k,skillID in pairs(unit.skills) do
 		i=i+1
 		if between(pos_x,600,725) and between(pos_y,30*i+60,30*i+90) then
@@ -962,7 +959,14 @@ function display_buttons()
     			love.graphics.setColor(0,0,0,255)
 			love.graphics.print(skill.name,600+5,30*i+60+5)
     			love.graphics.setColor(255,255,255,255)
+			love.graphics.print(skill.MPcost,725+5,30*i+60+5)
 		end
+		if i==0 then
+			love.graphics.draw(skill_button,600,30*1+60)
+    			love.graphics.setColor(100,100,100,255)
+			love.graphics.print("no skill",600+5,30*1+60+5)
+    			love.graphics.setColor(255,255,255,255)
+    		end
 	end
 end
 
