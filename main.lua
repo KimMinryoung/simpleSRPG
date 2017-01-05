@@ -48,6 +48,8 @@ function love.load(arg)
 
 	ending=0
 
+	ambush=false
+
 	turn=1
 
 	frame_count=0
@@ -155,6 +157,17 @@ function love.load(arg)
 		{0,0,0,0,0,0,0,0,0},
 		{0,0,0,0,0,0,0,0,0}
 	}
+	ranges[8]={
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,1,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0},
+		{0,0,0,0,0,0,0,0,0}
+	}
 	units={}
 	units_number=0
 	Unit = {}
@@ -217,8 +230,8 @@ function love.load(arg)
 			elseif self.defensing==2 then
 				damage=math.floor((other_unit.atk-self.dfs)*0.5)
 			end
-			damage=math.max(1,damage)
-			died=self:setHP(self.nowHP-damage,real)
+			local damage=math.max(1,damage)
+			local died=self:setHP(self.nowHP-damage,real)
 			return damage,died
 		end
 
@@ -236,13 +249,16 @@ function love.load(arg)
 	player_img=love.graphics.newImage("player.png")
 	Alchem_img=love.graphics.newImage("Alchem.png")
 	jol_img=love.graphics.newImage("jol.png")
-	player= Unit.new(1,"Red Mage",100,40,6,1,1,40,30,30,ranges[4],player_img)
-	alchem= Unit.new(0,"Alchem",42,98,4,2,1,22,25,43,ranges[2],Alchem_img)
+	player= Unit.new(1,"Red Mage",80,40,6,1,5,40,30,30,ranges[4],player_img)
+	alchem= Unit.new(0,"Alchem",42,98,4,2,5,22,25,43,ranges[2],Alchem_img)
+	alchem2= Unit.new(0,"Alchem2",42,98,4,2,4,22,25,43,ranges[2],Alchem_img)
 	alchem:addSkill(1)
+	alchem2:addSkill(1)
 
-	unit1 = Unit.new(2,"Blue Mage",60,30,5,7,10,70,10,30,ranges[3],jol_img)
-	unit2 = Unit.new(2,"Matial",50,1,5,2,5,40,15,1,ranges[1],jol_img)
-	unit3 = Unit.new(2,"Archer",20,1,5,20,5,40,0,1,ranges[4],jol_img)
+	Unit.new(2,"Blue Mage",60,30,6,7,11,50,10,30,ranges[3],jol_img)
+	Unit.new(2,"Matial",50,1,5,7,10,40,15,1,ranges[1],jol_img)
+	Unit.new(2,"Archer",20,1,5,8,11,40,0,1,ranges[4],jol_img)
+	Unit.new(2,"Swordman",50,1,4,20,10,40,10,1,ranges[2],jol_img)
 
 	skills={}
 	skills_number=0
@@ -265,32 +281,32 @@ function love.load(arg)
 	heal=Skill.new(1,"Heal",true,10,1,0.5,ranges[7])
 
 	map={
-	   { 0, 0, 3, 0, 0, 0, 0, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3}, 
-	   { 0, 0, 3, 0, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 0, 0},
-	   { 0, 0, 3, 0, 2, 2, 2, 0, 3, 3, 3, 3, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 3, 0, 3, 0, 2, 2, 2, 0, 3, 3, 0, 3, 1, 1, 3, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 3, 3, 0, 0, 0, 3, 3, 0, 0, 1, 0, 3, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 1, 3, 3, 3, 3, 3, 3, 0, 3, 1, 1, 3, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 1, 3, 3, 3, 3, 3, 3, 0, 3, 3, 3, 3, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 1, 0, 3, 3, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 3, 3, 3, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 2, 2, 3, 3, 3, 3, 1, 1, 1, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 2, 0, 3, 3, 3, 3, 1, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 2, 0, 3, 3, 3, 3, 1, 2, 2, 2, 2, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 2, 2, 3, 3, 3, 3, 1, 2, 2, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 3, 3, 3, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-	   { 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+	   { 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 2, 2}, 
+	   { 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 3, 2, 2, 2},
+	   { 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 0, 0, 0},
+	   { 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 3, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 1, 3, 3, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 1, 2, 2, 2, 2, 2, 2, 2, 1, 3, 3, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 3, 3, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0, 0},
+	   { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 3, 0, 0, 0, 0, 0},
 	}
 	tile = {}
 	for i=0,3 do
 		tile[i]=love.graphics.newImage("tile"..i..".png")
 	end
-	cost={1,2,4,9}
+	cost={1,2,3,99}
 	love.graphics.setNewFont(20)
 	moveable_layer=love.graphics.newImage("moveable_layer.png")
 	atkable_layer=love.graphics.newImage("atkable_layer.png")
@@ -411,11 +427,25 @@ function co_defense(unit)
 	action_end_process(unit)
 end
 
+function ambush_appear()
+	Unit.new(2,"Matial",50,1,5,11,6,40,15,1,ranges[1],jol_img)
+	Unit.new(2,"Matial",50,1,5,10,6,40,15,1,ranges[1],jol_img)
+	Unit.new(2,"Matial",50,1,5,12,6,40,15,1,ranges[1],jol_img)
+end
+
 function action_end_process(unit)
 	unit.action_end=true
 	selected_unit=nil
 	selected_skill=nil
 	state_stack_clear()
+	if ambush==false then
+		if is_same_team(unit,player) then
+			if unit.x>=10 then
+				ambush_appear()
+				ambush=true
+			end
+		end
+	end
 	if turn%2==1 then
 		if check_all_acted() then
 			pass_turn()
@@ -613,7 +643,7 @@ function mapstate_set(unit)
 	mapstate_clear(moveable,1)
 	mapstate_clear(atkable,0)
 	if state==1 then
-		moveable_tiles(unit.speed,unit.x,unit.y,unit)
+		calcul_moveable_tiles(unit)
 		atkable_tiles(unit.x,unit.y,unit.atk_range)
 	elseif state==2 or state==3 then
 		atkable_tiles(unit.x,unit.y,unit.atk_range)
@@ -696,7 +726,7 @@ function AI_stack_clear()
 	AI_stack.reward={}
 end
 function doMove(unit,dest_x,dest_y)
-	moveable_tiles(unit.speed,unit.x,unit.y,unit)
+	calcul_moveable_tiles(unit)
 	do_move = coroutine.create(co_moving)
 	coroutine.resume(do_move,unit,dest_x,dest_y)
 end
@@ -708,7 +738,7 @@ function simul_enemysAtk(unit,x,y)
 			if(atkable[aim_y][aim_x]==1) then
 				our_unit=find_unit_on_this_point(aim_x,aim_y)
 				if our_unit~=nil and our_unit.type<=1 then
-					damage,died=our_unit:get_attack(unit,false)
+					local damage,died=our_unit:get_attack(unit,false)
 					AI_stack.top=AI_stack.top+1
 					AI_stack.actions[AI_stack.top]="atk"
 					AI_stack.x[AI_stack.top]=x
@@ -717,7 +747,7 @@ function simul_enemysAtk(unit,x,y)
 					AI_stack.aim_y[AI_stack.top]=aim_y
 					AI_stack.reward[AI_stack.top]=damage
 					if died then
-						AI_stack.reward[AI_stack.top]=100
+						AI_stack.reward[AI_stack.top]=damage+100
 					end
 				end
 			end
@@ -739,7 +769,7 @@ function simul_enemysDefense(unit,x,y)
 end
 
 function simul_enemysActionAfterMove(unit)
-	moveable_tiles(unit.speed,unit.x,unit.y,unit)
+	calcul_moveable_tiles(unit)
 	for y=1, map_h do
 		for x=1, map_w do
 			if(moveable[y][x]<=0) then
@@ -766,7 +796,8 @@ function afterMovingCharacter(unit)
 end
 
 function should_not_get_input()
-	return turn%2==0 or (do_move ~= nil and coroutine.status(do_move)~="dead") or 
+	return ending~=0 or turn%2==0 or
+		(do_move ~= nil and coroutine.status(do_move)~="dead") or 
 		(do_atk ~= nil and coroutine.status(do_atk)~="dead") or
 		(do_skill ~= nil and coroutine.status(do_skill)~="dead") or
 		(do_defense ~= nil and coroutine.status(do_defense)~="dead") or
@@ -813,7 +844,7 @@ function love.mousepressed(pos_x, pos_y, button, istouch)
 			if clicked_unit~=nil then
 				state=-2
 				info_displaying_chara_num=clicked_unit.num
-				moveable_tiles(clicked_unit.speed,clicked_unit.x,clicked_unit.y,clicked_unit)
+				calcul_moveable_tiles(clicked_unit)
 				atkable_tiles(clicked_unit.x,clicked_unit.y,clicked_unit.atk_range)
 			end
 			--maybe add option menu later
@@ -862,6 +893,19 @@ function is_same_team(unit1,unit2)
 	end
 end
 
+function calcul_moveable_tiles(unit)
+	moveable_tiles(unit.speed,unit.x,unit.y,unit,0,0)
+
+	--if there is an ally unit, I can pass the point but can't arrive at the point
+	for y=1,map_h do
+		for x=1,map_w do
+			local unit_on_this_point=find_unit_on_this_point(x,y)
+			if unit_on_this_point~=nil and unit_on_this_point~=unit then
+				moveable[y][x]=1
+			end
+		end
+	end
+end
 
 function moveable_tiles(remainStep,x,y,unit,prev_x,prev_y)
 	if remainStep<0 then
@@ -890,13 +934,6 @@ function moveable_tiles(remainStep,x,y,unit,prev_x,prev_y)
 	end
 	if y+1<=map_h then
 		moveable_tiles(remainStep-(cost[map[y+1][x]+1]),x,y+1,unit,x,y)
-	end
-
-	--if there is an ally unit, I can pass the point but can't arrive at the point
-	if unit_on_this_point~=nil and unit_on_this_point~=unit then
-		if is_same_team(unit,unit_on_this_point)==true then
-			moveable[y][x]=1
-		end
 	end
 end
 
@@ -989,6 +1026,7 @@ function display_chara_info()
 	love.graphics.print("mobility\t"..unit.speed,600,420)
 	love.graphics.print("attack\t"..unit.atk,600,450)
 	love.graphics.print("defense\t"..unit.dfs,600,480)
+	love.graphics.print("magic\t"..unit.mag,600,510)
 end
 
 function display_main_info()
